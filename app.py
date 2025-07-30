@@ -1,6 +1,6 @@
 
 # app.py
-from flask import Flask, render_template, request, jsonify, send_from_directory, Response
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response, session
 import mimetypes
 import os
 import time
@@ -20,22 +20,69 @@ import json
 import uuid
 from werkzeug.utils import secure_filename
 import shutil
+import zipfile
+import tempfile
+import subprocess
+import requests
+from urllib.parse import urlparse
+import hashlib
+from functools import wraps
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this')
 app.config['WORKSPACE'] = 'workspace'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['CHAT_HISTORY_FILE'] = 'chat_history.json'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
+app.config['GITHUB_CLONE_FOLDER'] = 'github_clones'
+app.config['TEMP_FOLDER'] = 'temp'
+app.config['USER_SESSIONS'] = {}
 
 # Create necessary directories
 os.makedirs(app.config['WORKSPACE'], exist_ok=True)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['GITHUB_CLONE_FOLDER'], exist_ok=True)
+os.makedirs(app.config['TEMP_FOLDER'], exist_ok=True)
 
 # Global variable to track running tasks
 running_tasks = {}
 
 # Load configuration
 config = toml.load('config/config.toml')
+
+# Multi-user session management
+def get_user_session():
+    """Get or create user session"""
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+        session['username'] = f"User_{session['user_id'][:8]}"
+        session['created_at'] = datetime.now().isoformat()
+    
+    user_id = session['user_id']
+    if user_id not in app.config['USER_SESSIONS']:
+        app.config['USER_SESSIONS'][user_id] = {
+            'workspace': os.path.join(app.config['WORKSPACE'], user_id),
+            'uploads': os.path.join(app.config['UPLOAD_FOLDER'], user_id),
+            'github_clones': os.path.join(app.config['GITHUB_CLONE_FOLDER'], user_id),
+            'temp': os.path.join(app.config['TEMP_FOLDER'], user_id),
+            'chat_history': [],
+            'created_at': datetime.now(),
+            'last_active': datetime.now()
+        }
+        # Create user-specific directories
+        for path in app.config['USER_SESSIONS'][user_id].values():
+            if isinstance(path, str) and not path.endswith('.json'):
+                os.makedirs(path, exist_ok=True)
+    
+    return app.config['USER_SESSIONS'][user_id]
+
+def require_user_session(f):
+    """Decorator to ensure user session exists"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        get_user_session()
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Advanced API Key Management System
 class AdvancedAPIKeyManager:
@@ -100,371 +147,444 @@ class AdvancedAPIKeyManager:
         current_time = time.time()
         
         # Check if key is disabled
-        if not key_config['enabled']:
-            return False
-        
-        # Check if key is in cooldown period (24 hours after rate limit)
         if api_key in self.disabled_keys:
             if current_time < self.disabled_keys[api_key]:
-                logger.debug(f"Key {key_config['name']} still in cooldown")
                 return False
             else:
-                # Cooldown expired, remove from disabled list
                 del self.disabled_keys[api_key]
-                self.failure_counts[api_key] = 0  # Reset failure count
-                logger.info(f"Key {key_config['name']} cooldown expired, re-enabling")
+        
+        # Check if key is enabled
+        if not key_config.get('enabled', True):
+            return False
         
         # Clean old usage data
         self._clean_old_usage_data(api_key)
         
         # Check rate limits
         stats = self.usage_stats[api_key]
-        
-        if len(stats['requests_this_minute']) >= key_config['max_requests_per_minute']:
-            logger.debug(f"Key {key_config['name']} hit minute limit")
-            return False
-        
-        if len(stats['requests_this_hour']) >= key_config['max_requests_per_hour']:
-            logger.debug(f"Key {key_config['name']} hit hour limit")
-            return False
-        
-        if len(stats['requests_this_day']) >= key_config['max_requests_per_day']:
-            logger.debug(f"Key {key_config['name']} hit daily limit")
-            # Disable key for 24 hours
-            self._disable_key_for_rate_limit(api_key, key_config['name'])
+        if (len(stats['requests_this_minute']) >= key_config.get('max_requests_per_minute', 5) or
+            len(stats['requests_this_hour']) >= key_config.get('max_requests_per_hour', 100) or
+            len(stats['requests_this_day']) >= key_config.get('max_requests_per_day', 100)):
             return False
         
         return True
     
     def _disable_key_for_rate_limit(self, api_key: str, key_name: str):
-        """Disable API key for 24 hours due to rate limit"""
-        disable_until = time.time() + 24 * 60 * 60  # 24 hours
-        self.disabled_keys[api_key] = disable_until
-        
-        logger.warning(f"API key {key_name} disabled for 24 hours due to rate limit")
+        """Disable a key temporarily due to rate limiting"""
+        disable_duration = min(300, 60 * (2 ** self.failure_counts.get(api_key, 0)))  # Exponential backoff
+        self.disabled_keys[api_key] = time.time() + disable_duration
+        logger.warning(f"Disabled API key {key_name} for {disable_duration} seconds due to rate limiting")
     
     def _calculate_key_score(self, key_config: dict) -> float:
         """Calculate a score for key selection (higher is better)"""
         api_key = key_config['api_key']
         current_time = time.time()
         
-        # Base score from priority (lower priority number = higher score)
-        priority_score = 10.0 / max(key_config['priority'], 1)
+        # Base score from priority
+        score = key_config.get('priority', 1) * 100
         
-        # Usage-based score (less recent usage = higher score)
+        # Penalize recently used keys
+        if api_key in self.last_used:
+            time_since_last_use = current_time - self.last_used[api_key]
+            score += min(time_since_last_use / 60, 50)  # Bonus for keys not used recently
+        
+        # Penalize keys with high failure counts
+        failure_count = self.failure_counts.get(api_key, 0)
+        score -= failure_count * 10
+        
+        # Bonus for keys with low usage
         stats = self.usage_stats[api_key]
-        minute_usage = len(stats['requests_this_minute'])
-        hour_usage = len(stats['requests_this_hour'])
-        day_usage = len(stats['requests_this_day'])
+        usage_ratio = len(stats['requests_this_minute']) / key_config.get('max_requests_per_minute', 5)
+        score += (1 - usage_ratio) * 20
         
-        # Calculate remaining capacity
-        minute_capacity = 1.0 - (minute_usage / key_config['max_requests_per_minute'])
-        hour_capacity = 1.0 - (hour_usage / key_config['max_requests_per_hour'])
-        day_capacity = 1.0 - (day_usage / key_config['max_requests_per_day'])
-        
-        capacity_score = (minute_capacity + hour_capacity + day_capacity) / 3
-        
-        # Failure-based score (fewer failures = higher score)
-        failure_score = 1.0 / (self.failure_counts[api_key] + 1)
-        
-        # Time since last use (longer = slightly higher score)
-        time_score = 1.0
-        if self.last_used[api_key]:
-            time_since_use = current_time - self.last_used[api_key]
-            time_score = min(1.0 + (time_since_use / 3600), 2.0)  # Max 2x after 1 hour
-        
-        # Combine all factors
-        final_score = priority_score * capacity_score * failure_score * time_score
-        return max(final_score, 0.1)  # Minimum score
+        return score
     
     def get_available_api_key(self, use_random: bool = True) -> Optional[Tuple[str, dict]]:
         """Get an available API key with advanced selection logic"""
-        available_keys = []
-        
-        # Find all available keys
-        for key_config in self.api_keys:
-            if self._is_key_available(key_config):
-                available_keys.append(key_config)
+        available_keys = [
+            key_config for key_config in self.api_keys 
+            if self._is_key_available(key_config)
+        ]
         
         if not available_keys:
-            logger.warning("No API keys available")
+            logger.error("No available API keys found")
             return None
         
-        if use_random and len(available_keys) > 1:
-            # Advanced weighted random selection
-            weights = []
-            for key_config in available_keys:
-                score = self._calculate_key_score(key_config)
-                weights.append(score)
-            
-            # Weighted random choice
-            selected_key = random.choices(available_keys, weights=weights)[0]
-            logger.info(f"Randomly selected API key: {selected_key['name']} (weighted selection)")
+        if use_random:
+            # Weighted random selection based on scores
+            scores = [self._calculate_key_score(key_config) for key_config in available_keys]
+            total_score = sum(scores)
+            if total_score > 0:
+                weights = [score / total_score for score in scores]
+                selected_key_config = random.choices(available_keys, weights=weights)[0]
+            else:
+                selected_key_config = random.choice(available_keys)
         else:
-            # Priority-based selection with health metrics
-            available_keys.sort(key=lambda k: (
-                k['priority'],
-                -self._calculate_key_score(k),
-                self.failure_counts[k['api_key']],
-                k['api_key']  # Deterministic tie-breaker
-            ))
-            selected_key = available_keys[0]
-            logger.info(f"Priority selected API key: {selected_key['name']}")
+            # Select the key with the highest score
+            selected_key_config = max(available_keys, key=lambda k: self._calculate_key_score(k))
         
-        return selected_key['api_key'], selected_key
+        api_key = selected_key_config['api_key']
+        self.last_used[api_key] = time.time()
+        
+        logger.info(f"Selected API key: {selected_key_config.get('name', 'Unknown')}")
+        return api_key, selected_key_config
     
     def record_successful_request(self, api_key: str):
         """Record a successful API request"""
-        current_time = time.time()
-        stats = self.usage_stats[api_key]
-        
-        # Add timestamps
-        stats['requests_this_minute'].append(current_time)
-        stats['requests_this_hour'].append(current_time)
-        stats['requests_this_day'].append(current_time)
-        stats['total_requests'] += 1
-        
-        # Update last used time
-        self.last_used[api_key] = current_time
-        
-        # Reset failure count on success
-        self.failure_counts[api_key] = 0
-        
-        logger.info(f"Recorded successful request for API key")
+        if api_key in self.usage_stats:
+            current_time = time.time()
+            stats = self.usage_stats[api_key]
+            stats['requests_this_minute'].append(current_time)
+            stats['requests_this_hour'].append(current_time)
+            stats['requests_this_day'].append(current_time)
+            stats['total_requests'] += 1
+            
+            # Reset failure count on success
+            if api_key in self.failure_counts:
+                self.failure_counts[api_key] = 0
     
     def record_rate_limit_error(self, api_key: str, key_name: str):
-        """Record a rate limit error and disable the key"""
+        """Record a rate limit error"""
         self._disable_key_for_rate_limit(api_key, key_name)
-        self.failure_counts[api_key] += 1
-        logger.warning(f"Rate limit error recorded for {key_name}")
+        self.record_failure(api_key, key_name, "rate_limit")
     
     def record_failure(self, api_key: str, key_name: str, error_type: str = "unknown"):
-        """Record a failure for an API key"""
-        self.failure_counts[api_key] += 1
-        logger.warning(f"Failure recorded for {key_name}: {error_type} (consecutive: {self.failure_counts[api_key]})")
+        """Record an API failure"""
+        if api_key in self.failure_counts:
+            self.failure_counts[api_key] += 1
         
-        # If too many consecutive failures, disable temporarily
-        if self.failure_counts[api_key] >= 5:
-            # Exponential backoff: 5 minutes * 2^(failures-5)
-            backoff_minutes = 5 * (2 ** (self.failure_counts[api_key] - 5))
-            backoff_minutes = min(backoff_minutes, 240)  # Cap at 4 hours
-            
-            disable_until = time.time() + (backoff_minutes * 60)
-            self.disabled_keys[api_key] = disable_until
-            logger.warning(f"Temporarily disabled {key_name} for {backoff_minutes} minutes due to failures")
+        logger.error(f"API key {key_name} failed with error type: {error_type}")
+        
+        # Disable key if too many consecutive failures
+        if self.failure_counts.get(api_key, 0) >= 5:
+            disable_duration = 3600  # 1 hour
+            self.disabled_keys[api_key] = time.time() + disable_duration
+            logger.warning(f"Disabled API key {key_name} for {disable_duration} seconds due to repeated failures")
     
     def get_keys_status(self) -> List[Dict]:
-        """Get detailed status of all API keys"""
+        """Get status of all API keys"""
         status_list = []
         current_time = time.time()
         
         for key_config in self.api_keys:
             api_key = key_config['api_key']
+            stats = self.usage_stats.get(api_key, {})
+            
+            # Clean old data
             self._clean_old_usage_data(api_key)
             
-            stats = self.usage_stats[api_key]
-            is_available = self._is_key_available(key_config)
-            
             status = {
-                'name': key_config['name'],
-                'enabled': key_config['enabled'],
-                'available': is_available,
+                'name': key_config.get('name', 'Unknown'),
+                'enabled': key_config.get('enabled', True),
+                'priority': key_config.get('priority', 1),
+                'is_available': self._is_key_available(key_config),
+                'is_disabled': api_key in self.disabled_keys,
+                'disabled_until': self.disabled_keys.get(api_key),
+                'failure_count': self.failure_counts.get(api_key, 0),
                 'usage': {
-                    'requests_this_minute': len(stats['requests_this_minute']),
-                    'requests_this_hour': len(stats['requests_this_hour']),
-                    'requests_this_day': len(stats['requests_this_day']),
-                    'total_requests': stats['total_requests']
+                    'minute': len(stats.get('requests_this_minute', [])),
+                    'hour': len(stats.get('requests_this_hour', [])),
+                    'day': len(stats.get('requests_this_day', [])),
+                    'total': stats.get('total_requests', 0)
                 },
                 'limits': {
-                    'max_per_minute': key_config['max_requests_per_minute'],
-                    'max_per_hour': key_config['max_requests_per_hour'],
-                    'max_per_day': key_config['max_requests_per_day']
+                    'minute': key_config.get('max_requests_per_minute', 5),
+                    'hour': key_config.get('max_requests_per_hour', 100),
+                    'day': key_config.get('max_requests_per_day', 100)
                 },
-                'failures': self.failure_counts[api_key],
-                'last_used': datetime.fromtimestamp(self.last_used[api_key]).isoformat() if self.last_used[api_key] else "Never"
+                'last_used': self.last_used.get(api_key)
             }
-            
-            # Add cooldown info if applicable
-            if api_key in self.disabled_keys:
-                remaining_time = int(self.disabled_keys[api_key] - current_time)
-                if remaining_time > 0:
-                    status['cooldown_remaining_seconds'] = remaining_time
-                    status['cooldown_remaining_readable'] = f"{remaining_time // 3600}h {(remaining_time % 3600) // 60}m"
-            
             status_list.append(status)
         
         return status_list
 
-# Initialize the advanced API key manager
-api_key_manager = AdvancedAPIKeyManager(config['llm']['api_keys'])
+# Initialize API key manager
+api_key_manager = AdvancedAPIKeyManager(config.get('api_keys', []))
 
 # 初始化工作目录
-os.makedirs(app.config['WORKSPACE'], exist_ok=True)
+# os.makedirs(app.config['WORKSPACE'], exist_ok=True) # This line is now handled by get_user_session
 LOG_FILE = 'logs/root_stream.log'
 FILE_CHECK_INTERVAL = 2  # 文件检查间隔（秒）
 PROCESS_TIMEOUT = 6099999990    # 最长处理时间（秒）
 
 def get_files_pathlib(root_dir):
-    """使用pathlib递归获取文件路径"""
-    root = Path(root_dir)
-    return [str(path) for path in root.glob('**/*') if path.is_file()]
+    """Get all files in directory using pathlib"""
+    files = []
+    for path in Path(root_dir).rglob('*'):
+        if path.is_file():
+            files.append(str(path))
+    return files
 
 @app.route('/')
+@require_user_session
 def index():
-    files = os.listdir(app.config['WORKSPACE'])
-    return render_template('index.html', files=files)
+    return render_template('index.html')
 
 @app.route('/file/<filename>')
+@require_user_session
 def file(filename):
-    file_path = os.path.join(app.config['WORKSPACE'], filename)
-    if os.path.isfile(file_path):
-        mime_type, _ = mimetypes.guess_type(filename)
-        if mime_type and mime_type.startswith('text/'):
-            if mime_type == 'text/html':
-                return send_from_directory(app.config['WORKSPACE'], filename)
-            else:
+    user_session = get_user_session()
+    file_path = os.path.join(user_session['uploads'], filename)
+    
+    if os.path.exists(file_path):
+        # Determine MIME type
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type is None:
+            mime_type = 'application/octet-stream'
+        
+        # For text files, return content
+        if mime_type.startswith('text/') or mime_type in ['application/json', 'application/xml']:
+            try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                return render_template('code.html', filename=filename, content=content)
-        elif mime_type == 'application/pdf':
-            return send_from_directory(app.config['WORKSPACE'], filename)
-        else:
-            return send_from_directory(app.config['WORKSPACE'], filename)
-    else:
-        return "File not found", 404
+                return jsonify({
+                    'filename': filename,
+                    'content': content,
+                    'mime_type': mime_type,
+                    'size': os.path.getsize(file_path)
+                })
+            except UnicodeDecodeError:
+                return jsonify({'error': 'File contains binary data'}), 400
+        
+        # For binary files, return file info
+        return jsonify({
+            'filename': filename,
+            'mime_type': mime_type,
+            'size': os.path.getsize(file_path),
+            'binary': True
+        })
+    
+    return jsonify({'error': 'File not found'}), 404
 
 @app.route('/api/keys/status')
 def api_keys_status():
-    """API endpoint to get status of all API keys"""
     return jsonify(api_key_manager.get_keys_status())
 
 # File upload utilities
 def allowed_file(filename):
     """Check if file type is allowed"""
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'csv', 'xlsx', 'py', 'js', 'html', 'css', 'json', 'xml', 'md'}
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'py', 'js', 'html', 'css', 'json', 'xml', 'csv', 'md', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', '7z'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_chat_history(chat_data):
-    """Save chat history to file"""
-    try:
-        if os.path.exists(app.config['CHAT_HISTORY_FILE']):
-            with open(app.config['CHAT_HISTORY_FILE'], 'r', encoding='utf-8') as f:
-                history = json.load(f)
-        else:
-            history = []
-        
-        history.append(chat_data)
-        
-        # Keep only last 100 conversations
-        if len(history) > 100:
-            history = history[-100:]
-        
-        with open(app.config['CHAT_HISTORY_FILE'], 'w', encoding='utf-8') as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.error(f"Error saving chat history: {e}")
+    """Save chat history for current user"""
+    user_session = get_user_session()
+    user_session['chat_history'].append({
+        'timestamp': datetime.now().isoformat(),
+        'message': chat_data.get('message', ''),
+        'response': chat_data.get('response', ''),
+        'task_id': chat_data.get('task_id', ''),
+        'files': chat_data.get('files', [])
+    })
+    
+    # Keep only last 100 messages
+    if len(user_session['chat_history']) > 100:
+        user_session['chat_history'] = user_session['chat_history'][-100:]
 
 def load_chat_history():
-    """Load chat history from file"""
-    try:
-        if os.path.exists(app.config['CHAT_HISTORY_FILE']):
-            with open(app.config['CHAT_HISTORY_FILE'], 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return []
-    except Exception as e:
-        logger.error(f"Error loading chat history: {e}")
-        return []
+    """Load chat history for current user"""
+    user_session = get_user_session()
+    return user_session['chat_history']
 
 @app.route('/api/upload', methods=['POST'])
+@require_user_session
 def upload_file():
-    """Handle file upload"""
+    user_session = get_user_session()
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        # Add timestamp to avoid conflicts
+        name, ext = os.path.splitext(filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{name}_{timestamp}{ext}"
+        
+        file_path = os.path.join(user_session['uploads'], filename)
+        file.save(file_path)
+        
+        # Get file info
+        file_info = {
+            'filename': filename,
+            'size': os.path.getsize(file_path),
+            'uploaded_at': datetime.now().isoformat(),
+            'path': file_path
+        }
+        
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'file': file_info
+        })
+    
+    return jsonify({'error': 'File type not allowed'}), 400
+
+@app.route('/api/github-clone', methods=['POST'])
+@require_user_session
+def github_clone():
+    """Clone a GitHub repository"""
+    user_session = get_user_session()
+    data = request.get_json()
+    
+    if not data or 'url' not in data:
+        return jsonify({'error': 'GitHub URL is required'}), 400
+    
+    github_url = data['url'].strip()
+    
+    # Validate GitHub URL
+    if not (github_url.startswith('https://github.com/') or github_url.startswith('git@github.com:')):
+        return jsonify({'error': 'Invalid GitHub URL'}), 400
+    
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            # Add timestamp to avoid conflicts
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{timestamp}_{filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            # Get file info
-            file_size = os.path.getsize(filepath)
-            file_info = {
-                'filename': filename,
-                'original_name': file.filename,
-                'size': file_size,
-                'upload_time': datetime.now().isoformat(),
-                'path': filepath
-            }
-            
-            return jsonify({
-                'success': True,
-                'file_info': file_info,
-                'message': f'File {file.filename} uploaded successfully'
-            })
+        # Extract repo name from URL
+        if github_url.startswith('https://github.com/'):
+            repo_path = github_url.replace('https://github.com/', '').replace('.git', '')
         else:
-            return jsonify({'error': 'File type not allowed'}), 400
-            
+            repo_path = github_url.replace('git@github.com:', '').replace('.git', '')
+        
+        repo_name = repo_path.replace('/', '_')
+        clone_dir = os.path.join(user_session['github_clones'], repo_name)
+        
+        # Remove existing directory if it exists
+        if os.path.exists(clone_dir):
+            shutil.rmtree(clone_dir)
+        
+        # Clone the repository
+        result = subprocess.run(
+            ['git', 'clone', github_url, clone_dir],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout
+        )
+        
+        if result.returncode != 0:
+            return jsonify({'error': f'Failed to clone repository: {result.stderr}'}), 400
+        
+        # Get repository info
+        repo_info = {
+            'name': repo_name,
+            'path': clone_dir,
+            'cloned_at': datetime.now().isoformat(),
+            'files': get_files_pathlib(clone_dir)
+        }
+        
+        return jsonify({
+            'message': 'Repository cloned successfully',
+            'repository': repo_info
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({'error': 'Clone operation timed out'}), 400
     except Exception as e:
-        logger.error(f"File upload error: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'Failed to clone repository: {str(e)}'}), 400
+
+@app.route('/api/download-zip', methods=['POST'])
+@require_user_session
+def download_zip():
+    """Create and download a ZIP file of selected files"""
+    user_session = get_user_session()
+    data = request.get_json()
+    
+    if not data or 'files' not in data:
+        return jsonify({'error': 'Files list is required'}), 400
+    
+    files = data['files']
+    if not files:
+        return jsonify({'error': 'No files selected'}), 400
+    
+    try:
+        # Create temporary ZIP file
+        zip_filename = f"download_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        zip_path = os.path.join(user_session['temp'], zip_filename)
+        
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in files:
+                if os.path.exists(file_path):
+                    # Add file to ZIP with relative path
+                    arcname = os.path.basename(file_path)
+                    zipf.write(file_path, arcname)
+        
+        return jsonify({
+            'message': 'ZIP file created successfully',
+            'zip_file': zip_filename,
+            'download_url': f'/api/download/{zip_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to create ZIP file: {str(e)}'}), 400
+
+@app.route('/api/download/<filename>')
+@require_user_session
+def download_file(filename):
+    """Download a file from temp directory"""
+    user_session = get_user_session()
+    file_path = os.path.join(user_session['temp'], filename)
+    
+    if os.path.exists(file_path):
+        return send_from_directory(user_session['temp'], filename, as_attachment=True)
+    
+    return jsonify({'error': 'File not found'}), 404
 
 @app.route('/api/files')
+@require_user_session
 def get_uploaded_files():
-    """Get list of uploaded files"""
-    try:
-        files = []
-        if os.path.exists(app.config['UPLOAD_FOLDER']):
-            for filename in os.listdir(app.config['UPLOAD_FOLDER']):
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                if os.path.isfile(filepath):
-                    file_info = {
-                        'filename': filename,
-                        'size': os.path.getsize(filepath),
-                        'modified_time': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat()
-                    }
-                    files.append(file_info)
-        
-        return jsonify({'files': files})
-    except Exception as e:
-        logger.error(f"Error getting files: {e}")
-        return jsonify({'error': str(e)}), 500
+    user_session = get_user_session()
+    files = []
+    
+    # Get uploaded files
+    upload_dir = user_session['uploads']
+    if os.path.exists(upload_dir):
+        for filename in os.listdir(upload_dir):
+            file_path = os.path.join(upload_dir, filename)
+            if os.path.isfile(file_path):
+                files.append({
+                    'name': filename,
+                    'path': file_path,
+                    'size': os.path.getsize(file_path),
+                    'type': 'uploaded',
+                    'modified': datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+                })
+    
+    # Get GitHub cloned repositories
+    github_dir = user_session['github_clones']
+    if os.path.exists(github_dir):
+        for repo_name in os.listdir(github_dir):
+            repo_path = os.path.join(github_dir, repo_name)
+            if os.path.isdir(repo_path):
+                repo_files = get_files_pathlib(repo_path)
+                files.append({
+                    'name': repo_name,
+                    'path': repo_path,
+                    'size': len(repo_files),
+                    'type': 'github_repo',
+                    'files': repo_files,
+                    'modified': datetime.fromtimestamp(os.path.getmtime(repo_path)).isoformat()
+                })
+    
+    return jsonify(files)
 
 @app.route('/api/chat-history')
+@require_user_session
 def get_chat_history():
-    """Get chat history"""
-    try:
-        history = load_chat_history()
-        return jsonify({'history': history})
-    except Exception as e:
-        logger.error(f"Error getting chat history: {e}")
-        return jsonify({'error': str(e)}), 500
+    return jsonify(load_chat_history())
 
 @app.route('/api/stop-task', methods=['POST'])
+@require_user_session
 def stop_task():
-    """Stop running AI task"""
-    try:
-        data = request.get_json()
-        task_id = data.get('task_id', 'default')
-        
-        if task_id in running_tasks:
-            # Signal the task to stop
-            running_tasks[task_id]['stop_flag'] = True
-            logger.info(f"Stop signal sent for task: {task_id}")
-            return jsonify({'success': True, 'message': 'Stop signal sent'})
-        else:
-            return jsonify({'success': False, 'message': 'No running task found'})
-            
-    except Exception as e:
-        logger.error(f"Error stopping task: {e}")
-        return jsonify({'error': str(e)}), 500
+    data = request.get_json()
+    task_id = data.get('task_id')
+    
+    if task_id in running_tasks:
+        # Signal the task to stop
+        running_tasks[task_id]['stop_event'].set()
+        del running_tasks[task_id]
+        return jsonify({'message': 'Task stopped successfully'})
+    
+    return jsonify({'error': 'Task not found'}), 404
 
 async def main(prompt, task_id=None):
     """Enhanced main function with advanced API key rotation and stop functionality"""
@@ -869,7 +989,7 @@ if __name__ == '__main__':
     # Log initial API key status
     logger.info("=== Initial API Key Status ===")
     for status in api_key_manager.get_keys_status():
-        logger.info(f"Key {status['name']}: Available={status['available']}, "
-                    f"Usage={status['usage']['requests_this_day']}/{status['limits']['max_per_day']} today")
+        logger.info(f"Key {status['name']}: Available={status['is_available']}, "
+                    f"Usage={status['usage']['day']}/{status['limits']['day']} today")
     
     app.run(host='0.0.0.0', port=3000,  debug=False)

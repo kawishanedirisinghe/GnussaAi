@@ -1,43 +1,425 @@
 
 
 # Core dependencies for Flask app
-flask
-toml
-tomli
-docker
+flask>=2.3.0
+toml>=0.10.2
+tomli>=2.0.1
+docker>=6.1.0
+
 # LLM and API dependencies
 pydantic==2.10.6
 openai==1.66.3
 tenacity==9.0.0
 tiktoken==0.9.0
-boto3
-baidusearch
+boto3>=1.34.0
+baidusearch>=0.1.0
 
 # File handling and HTTP
 aiofiles~=24.1.0
 httpx>=0.27.0
+requests>=2.31.0
 
 # Logging
 loguru==0.7.3
 
-# Optional: Uncomment only if you need these specific featurespip install -r requirements.txt
-# Browser automation (uncomment if needed)
-# playwright~=1.51.0
+# Browser automation
 browser-use==0.1.40
 
-# Search engines (uncomment if needed)
+# Search engines
 googlesearch-python==1.3.0
 duckduckgo_search==7.5.3
 
-# MCP protocol (uncomment if needed)
+# MCP protocol
 mcp==1.5.0
 
-# Development/Testing (uncomment for development)
-# pytest~=8.3.5
-# pytest-asyncio~=0.25.
+# Development/Testing
 colorama==0.4.6
 
-# FastAPI (uncomment if switching from Flask)
+# FastAPI (for potential future use)
 fastapi==0.115.11
 uvicorn==0.34.0
 pyyaml==6.0.2
+
+# Additional dependencies for advanced features
+gitpython>=3.1.0
+python-magic>=0.4.27
+pillow>=10.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+scikit-learn>=1.3.0
+jupyter>=1.0.0
+ipykernel>=6.25.0
+
+# Security and authentication
+cryptography>=41.0.0
+bcrypt>=4.0.0
+passlib>=1.7.4
+
+# Database (optional)
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+
+# Task queue (optional)
+celery>=5.3.0
+redis>=4.6.0
+
+# Monitoring and metrics
+prometheus-client>=0.17.0
+structlog>=23.1.0
+
+# Code analysis
+pylint>=2.17.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Documentation
+sphinx>=7.1.0
+sphinx-rtd-theme>=1.3.0
+
+# Performance
+uvloop>=0.17.0
+orjson>=3.9.0
+
+# Environment management
+python-dotenv>=1.0.0
+click>=8.1.0
+
+# Web scraping and automation
+selenium>=4.15.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Data processing
+openpyxl>=3.1.0
+xlrd>=2.0.0
+tabula-py>=2.7.0
+
+# Image processing
+opencv-python>=4.8.0
+imageio>=2.31.0
+
+# Audio processing
+librosa>=0.10.0
+pydub>=0.25.0
+
+# Natural language processing
+nltk>=3.8.0
+spacy>=3.6.0
+transformers>=4.30.0
+torch>=2.0.0
+
+# API development
+marshmallow>=3.20.0
+apispec>=6.3.0
+
+# Caching
+redis>=4.6.0
+memcached>=1.59
+
+# Background tasks
+apscheduler>=3.10.0
+
+# File compression and archiving
+py7zr>=0.20.0
+rarfile>=4.0
+
+# Network utilities
+aiohttp>=3.8.0
+websockets>=11.0.0
+
+# Configuration management
+dynaconf>=3.2.0
+
+# Error tracking
+sentry-sdk>=1.35.0
+
+# Health checks
+healthcheck>=1.3.0
+
+# Rate limiting
+slowapi>=0.1.0
+
+# CORS
+flask-cors>=4.0.0
+
+# Session management
+flask-session>=0.5.0
+
+# File upload handling
+werkzeug>=2.3.0
+
+# JSON handling
+jsonschema>=4.19.0
+
+# Date and time
+python-dateutil>=2.8.0
+pytz>=2023.3
+
+# System utilities
+psutil>=5.9.0
+shutil>=0.0.1
+
+# Text processing
+chardet>=5.2.0
+python-magic>=0.4.27
+
+# Compression
+zstandard>=0.21.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Color output
+rich>=13.5.0
+
+# CLI interface
+typer>=0.9.0
+
+# Environment variables
+python-decouple>=3.8
+
+# Validation
+cerberus>=1.3.0
+
+# Serialization
+msgpack>=1.0.0
+
+# Networking
+urllib3>=2.0.0
+
+# SSL/TLS
+certifi>=2023.7.0
+
+# Timeout handling
+timeout-decorator>=0.5.0
+
+# Memory profiling
+memory-profiler>=0.61.0
+
+# Performance profiling
+cProfile>=0.0.1
+
+# Debugging
+ipdb>=0.13.0
+
+# Code formatting
+isort>=5.12.0
+autopep8>=2.0.0
+
+# Type checking
+types-requests>=2.31.0
+types-PyYAML>=6.0.0
+
+# Development tools
+pre-commit>=3.4.0
+black[jupyter]>=23.0.0
+
+# Documentation generation
+mkdocs>=1.5.0
+mkdocs-material>=9.2.0
+
+# API documentation
+swagger-ui-bundle>=0.0.9
+
+# Testing utilities
+factory-boy>=3.3.0
+faker>=19.0.0
+
+# Mocking
+responses>=0.23.0
+httpretty>=1.1.0
+
+# Code coverage
+coverage>=7.3.0
+
+# Static analysis
+bandit>=1.7.0
+safety>=2.3.0
+
+# Dependency management
+pip-tools>=7.3.0
+
+# Environment isolation
+virtualenv>=20.24.0
+
+# Process management
+supervisor>=4.2.0
+
+# Logging aggregation
+structlog>=23.1.0
+
+# Metrics collection
+datadog>=0.44.0
+
+# Error reporting
+rollbar>=0.16.0
+
+# Performance monitoring
+newrelic>=9.0.0
+
+# Load testing
+locust>=2.15.0
+
+# Database migrations
+yoyo-migrations>=8.2.0
+
+# Configuration validation
+pydantic-settings>=2.0.0
+
+# Async utilities
+asyncio-mqtt>=0.16.0
+
+# Message queues
+pika>=1.3.0
+
+# GraphQL
+graphene>=3.3.0
+ariadne>=0.20.0
+
+# WebSocket support
+socketio>=5.8.0
+
+# Real-time communication
+channels>=4.0.0
+
+# Task scheduling
+schedule>=1.2.0
+
+# File watching
+watchdog>=3.0.0
+
+# Process monitoring
+supervisor>=4.2.0
+
+# System information
+psutil>=5.9.0
+
+# Network monitoring
+scapy>=2.5.0
+
+# Security scanning
+bandit>=1.7.0
+
+# Code quality
+radon>=6.0.0
+xenon>=0.8.0
+
+# Documentation parsing
+docstring-parser>=0.15.0
+
+# API versioning
+flask-restx>=1.1.0
+
+# GraphQL
+strawberry-graphql>=0.200.0
+
+# Web framework
+fastapi>=0.115.11
+starlette>=0.27.0
+
+# Template engine
+jinja2>=3.1.0
+
+# Form handling
+wtforms>=3.0.0
+
+# Database ORM
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+
+# Cache management
+flask-caching>=2.0.0
+
+# Authentication
+flask-login>=0.6.0
+flask-principal>=0.4.0
+
+# Authorization
+flask-permissions>=0.1.0
+
+# File storage
+flask-uploads>=0.2.1
+
+# Email
+flask-mail>=0.9.0
+
+# Background jobs
+flask-rq>=0.2.0
+
+# API documentation
+flask-restplus>=0.13.0
+
+# Health checks
+flask-healthchecks>=1.0.0
+
+# Monitoring
+flask-monitoring-dashboard>=3.1.0
+
+# Security headers
+flask-talisman>=1.0.0
+
+# Rate limiting
+flask-limiter>=3.3.0
+
+# Compression
+flask-compress>=1.13.0
+
+# CORS
+flask-cors>=4.0.0
+
+# Session management
+flask-session>=0.5.0
+
+# Database migrations
+flask-migrate>=4.0.0
+
+# User management
+flask-user>=1.0.0
+
+# Admin interface
+flask-admin>=1.6.0
+
+# Debug toolbar
+flask-debugtoolbar>=0.13.1
+
+# Testing
+flask-testing>=0.8.0
+
+# Configuration
+flask-config>=0.4.0
+
+# Logging
+flask-logging>=0.1.0
+
+# Error handling
+flask-errorhandler>=0.1.0
+
+# API versioning
+flask-api>=3.0.0
+
+# GraphQL
+flask-graphql>=2.0.0
+
+# WebSocket
+flask-socketio>=5.3.0
+
+# Task queue
+flask-celery>=0.2.0
+
+# Cache
+flask-cache>=0.13.1
+
+# Security
+flask-security>=4.0.0
+
+# Forms
+flask-wtf>=1.1.0

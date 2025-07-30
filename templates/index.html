@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenManus AI - Advanced Interface</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>OpenManus AI - Advanced AI Agent Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #818cf8;
-            --secondary: #10b981;
-            --secondary-dark: #059669;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-            --info: #3b82f6;
-            --dark: #0f172a;
-            --dark-light: #1e293b;
-            --gray: #64748b;
-            --gray-light: #94a3b8;
-            --light: #f8fafc;
-            --white: #ffffff;
-            --border: #e2e8f0;
-            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            --gradient-secondary: linear-gradient(135deg, var(--secondary) 0%, var(--info) 100%);
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-elevated: #1f1f1f;
+            --bg-hover: #2a2a2a;
+            --border-primary: #333333;
+            --border-secondary: #404040;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-tertiary: #666666;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --accent-info: #3b82f6;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --gradient-primary: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            --gradient-bg: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
         * {
@@ -39,9 +41,9 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: var(--dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
             overflow-x: hidden;
@@ -55,7 +57,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--gradient-bg);
         }
 
         .animated-bg::before {
@@ -65,13 +67,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
             animation: float 20s ease-in-out infinite;
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
         }
 
         .container {
@@ -89,6 +94,7 @@
             align-items: center;
             padding: 20px 0;
             margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-primary);
         }
 
         .logo {
@@ -98,22 +104,22 @@
         }
 
         .logo-icon {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             background: var(--gradient-primary);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 20px;
             color: white;
-            font-size: 1.5rem;
-            box-shadow: var(--shadow);
+            font-weight: 700;
         }
 
         .logo-text {
-            font-size: 2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--white) 0%, rgba(255,255,255,0.8) 100%);
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -121,121 +127,177 @@
 
         .header-actions {
             display: flex;
-            gap: 15px;
             align-items: center;
+            gap: 15px;
         }
 
-        /* Glass Card Effect */
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: var(--shadow);
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         /* Main Layout */
         .main-layout {
             display: grid;
-            grid-template-columns: 350px 1fr 300px;
-            gap: 25px;
-            min-height: calc(100vh - 150px);
+            grid-template-columns: 300px 1fr 300px;
+            gap: 20px;
+            height: calc(100vh - 140px);
         }
 
         /* Sidebar */
         .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         .sidebar-section {
-            padding: 25px;
+            margin-bottom: 30px;
         }
 
-        .section-title {
-            font-size: 1.1rem;
+        .sidebar-title {
+            font-size: 14px;
             font-weight: 600;
-            color: var(--white);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
         }
 
         /* File Upload Area */
         .upload-area {
-            border: 2px dashed var(--glass-border);
-            border-radius: 15px;
+            border: 2px dashed var(--border-secondary);
+            border-radius: 8px;
             padding: 30px;
             text-align: center;
             transition: all 0.3s ease;
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
+            background: var(--bg-tertiary);
         }
 
         .upload-area:hover {
-            border-color: var(--primary-light);
-            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--accent-primary);
+            background: var(--bg-elevated);
         }
 
         .upload-area.dragover {
-            border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--accent-primary);
+            background: var(--bg-elevated);
             transform: scale(1.02);
         }
 
         .upload-icon {
-            font-size: 3rem;
-            color: var(--primary-light);
-            margin-bottom: 15px;
-        }
-
-        .upload-text {
-            color: var(--white);
-            font-weight: 500;
+            font-size: 32px;
+            color: var(--text-tertiary);
             margin-bottom: 10px;
         }
 
-        .upload-subtext {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 10px;
         }
 
-        /* Uploaded Files */
-        .uploaded-files {
-            max-height: 200px;
+        .upload-hint {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* GitHub Clone */
+        .github-clone {
+            margin-top: 20px;
+        }
+
+        .github-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .github-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .github-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .github-btn:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-1px);
+        }
+
+        /* File List */
+        .file-list {
+            max-height: 300px;
             overflow-y: auto;
-            margin-top: 15px;
         }
 
         .file-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
             margin-bottom: 8px;
-            transition: all 0.2s ease;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         .file-item:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--bg-hover);
+            border-color: var(--border-secondary);
+        }
+
+        .file-item.selected {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
         }
 
         .file-icon {
-            width: 35px;
-            height: 35px;
-            background: var(--gradient-secondary);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.9rem;
+            font-size: 16px;
+            color: var(--text-tertiary);
         }
 
         .file-info {
@@ -244,463 +306,391 @@
         }
 
         .file-name {
-            color: var(--white);
+            font-size: 14px;
             font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 0.9rem;
         }
 
-        .file-size {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.8rem;
+        .file-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
         }
 
-        .file-remove {
-            background: var(--danger);
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .file-remove:hover {
-            background: #dc2626;
-            transform: scale(1.1);
-        }
-
-        /* API Status */
-        .api-status-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .api-status-item:last-child {
-            border-bottom: none;
-        }
-
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .status-indicator.online {
-            background: var(--success);
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-        }
-
-        .status-indicator.offline {
-            background: var(--danger);
-        }
-
-        .api-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .api-name {
-            color: var(--white);
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .api-usage {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.8rem;
-        }
-
-        /* Chat Container */
-        .chat-container {
-            padding: 0;
+        /* Chat Area */
+        .chat-area {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
-            position: relative;
-        }
-
-        .chat-header {
-            padding: 25px;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chat-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--white);
-        }
-
-        .agent-selector {
-            display: flex;
-            gap: 10px;
-        }
-
-        .agent-button {
-            padding: 10px 20px;
-            border-radius: 25px;
-            border: 1px solid var(--glass-border);
-            background: transparent;
-            color: var(--white);
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .agent-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-2px);
-        }
-
-        .agent-button.active {
-            background: var(--gradient-primary);
-            border-color: var(--primary);
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        }
-
-        /* Messages Area */
-        .messages-area {
-            flex: 1;
-            padding: 25px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-height: calc(100vh - 300px);
-        }
-
-        .message {
-            max-width: 80%;
-            padding: 18px 22px;
-            border-radius: 20px;
-            position: relative;
-            animation: messageSlide 0.3s ease-out;
-            line-height: 1.6;
-            font-size: 0.95rem;
-        }
-
-        @keyframes messageSlide {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .user-message {
-            align-self: flex-end;
-            background: var(--gradient-primary);
-            color: white;
-            border-bottom-right-radius: 8px;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        }
-
-        .agent-message {
-            align-self: flex-start;
-            background: rgba(255, 255, 255, 0.95);
-            color: var(--dark);
-            border-bottom-left-radius: 8px;
-            box-shadow: var(--shadow);
-        }
-
-        .message-content {
-            margin-bottom: 8px;
-        }
-
-        .message-time {
-            font-size: 0.75rem;
-            opacity: 0.7;
-            font-weight: 400;
-        }
-
-        .message-files {
-            margin-top: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .message-file-tag {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-            align-self: flex-start;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 18px 22px;
-            border-radius: 20px;
-            border-bottom-left-radius: 8px;
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--gray);
-            border-radius: 50%;
-            animation: typingBounce 1.4s infinite ease-in-out;
-        }
-
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typingBounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-10px); }
-        }
-
-        /* Input Area */
-        .input-area {
-            padding: 25px;
-            border-top: 1px solid var(--glass-border);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .input-container {
-            display: flex;
-            gap: 15px;
-            align-items: flex-end;
-        }
-
-        .message-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 15px 20px;
-            font-family: inherit;
-            font-size: 1rem;
-            resize: none;
-            min-height: 50px;
-            max-height: 120px;
-            transition: all 0.3s ease;
-        }
-
-        .message-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-            background: white;
-        }
-
-        .input-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .action-button {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            position: relative;
-        }
-
-        .send-button {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        }
-
-        .send-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-        }
-
-        .send-button:disabled {
-            background: var(--gray-light);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .stop-button {
-            background: var(--danger);
-            color: white;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
-
-        .stop-button:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-
-        /* Right Sidebar - Chat History */
-        .chat-history {
-            padding: 25px;
-            max-height: calc(100vh - 150px);
-            overflow-y: auto;
-        }
-
-        .history-item {
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .history-item:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateX(5px);
-        }
-
-        .history-preview {
-            color: var(--white);
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-bottom: 5px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
-        .history-time {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.75rem;
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-primary);
+            background: var(--bg-elevated);
         }
 
-        /* Loading Spinner */
-        .spinner {
+        .chat-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .chat-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-user {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .message-avatar.ai {
+            background: var(--accent-secondary);
+        }
+
+        .message-content {
+            flex: 1;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            padding: 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message-content.ai {
+            background: var(--bg-elevated);
+            border-color: var(--border-secondary);
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 8px;
+            text-align: right;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid var(--border-primary);
+            background: var(--bg-elevated);
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            min-height: 44px;
+            max-height: 120px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            resize: none;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-secondary);
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Right Sidebar */
+        .right-sidebar {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* API Keys Status */
+        .api-keys-status {
+            margin-bottom: 30px;
+        }
+
+        .api-key-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .api-key-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .api-key-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .api-key-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .status-available {
+            color: var(--accent-success);
+        }
+
+        .status-unavailable {
+            color: var(--accent-danger);
+        }
+
+        .api-key-usage {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Loading States */
+        .loading {
+            display: inline-block;
             width: 20px;
             height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid var(--border-primary);
             border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s linear infinite;
+            border-top-color: var(--accent-primary);
+            animation: spin 1s ease-in-out infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        /* Buttons */
-        .btn {
-            padding: 12px 24px;
-            border-radius: 12px;
-            border: none;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            font-size: 0.9rem;
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 16px;
         }
 
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-tertiary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
         }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.2);
-            color: var(--white);
-            border: 1px solid var(--glass-border);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
         }
 
         /* Responsive Design */
         @media (max-width: 1200px) {
             .main-layout {
-                grid-template-columns: 300px 1fr;
-            }
-            
-            .chat-history {
-                display: none;
+                grid-template-columns: 250px 1fr 250px;
             }
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .main-layout {
                 grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
             }
             
-            .sidebar {
-                order: 2;
-                grid-template-columns: 1fr 1fr;
-                display: grid;
-                gap: 20px;
+            .sidebar, .right-sidebar {
+                order: 3;
             }
-            
+        }
+
+        @media (max-width: 600px) {
             .container {
-                padding: 15px;
+                padding: 10px;
             }
             
             .header {
                 flex-direction: column;
-                gap: 20px;
+                gap: 15px;
                 text-align: center;
+            }
+            
+            .chat-input-container {
+                flex-direction: column;
+            }
+            
+            .chat-actions {
+                justify-content: center;
             }
         }
 
-        /* Utility Classes */
-        .hidden { display: none !important; }
-        .text-center { text-align: center; }
-        .text-white { color: var(--white); }
-        .text-gray { color: var(--gray-light); }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mt-4 { margin-top: 1rem; }
-
         /* Scrollbar Styling */
         ::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
+            background: var(--bg-secondary);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
+            background: var(--border-primary);
+            border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+            background: var(--border-secondary);
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-sm {
+            font-size: 14px;
+        }
+
+        .text-xs {
+            font-size: 12px;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .bg-success {
+            background: var(--accent-success);
+        }
+
+        .bg-warning {
+            background: var(--accent-warning);
+        }
+
+        .bg-danger {
+            background: var(--accent-danger);
+        }
+
+        .text-success {
+            color: var(--accent-success);
+        }
+
+        .text-warning {
+            color: var(--accent-warning);
+        }
+
+        .text-danger {
+            color: var(--accent-danger);
         }
     </style>
 </head>
@@ -708,108 +698,110 @@
     <div class="animated-bg"></div>
     
     <div class="container">
+        <!-- Header -->
         <header class="header">
             <div class="logo">
                 <div class="logo-icon">
-                    <i class="fas fa-brain"></i>
+                    <i class="fas fa-robot"></i>
                 </div>
                 <div class="logo-text">OpenManus AI</div>
             </div>
+            
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="clearChat()">
-                    <i class="fas fa-trash"></i> Clear Chat
-                </button>
-                <button class="btn btn-primary" onclick="toggleHistory()">
-                    <i class="fas fa-history"></i> History
-                </button>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>System Online</span>
+                </div>
             </div>
         </header>
 
+        <!-- Main Layout -->
         <div class="main-layout">
             <!-- Left Sidebar -->
             <aside class="sidebar">
-                <!-- File Upload Section -->
-                <div class="glass-card sidebar-section">
-                    <h3 class="section-title">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        File Upload
-                    </h3>
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">File Upload</h3>
                     <div class="upload-area" id="uploadArea">
                         <div class="upload-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <div class="upload-text">Drop files here or click to upload</div>
-                        <div class="upload-subtext">Supports: PDF, TXT, DOC, Images, Code files</div>
-                        <input type="file" id="fileInput" multiple accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.csv,.xlsx,.py,.js,.html,.css,.json,.xml,.md" style="display: none;">
+                        <div class="upload-hint">Supports: TXT, PDF, Images, Code files</div>
+                        <input type="file" id="fileInput" multiple style="display: none;">
                     </div>
-                    <div class="uploaded-files" id="uploadedFiles"></div>
                 </div>
 
-                <!-- API Status Section -->
-                <div class="glass-card sidebar-section">
-                    <h3 class="section-title">
-                        <i class="fas fa-server"></i>
-                        API Status
-                    </h3>
-                    <div id="apiStatus">
-                        <div class="api-status-item">
-                            <div class="status-indicator"></div>
-                            <div class="api-info">
-                                <div class="api-name">Loading...</div>
-                            </div>
-                        </div>
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">GitHub Clone</h3>
+                    <div class="github-clone">
+                        <input type="text" class="github-input" id="githubUrl" placeholder="https://github.com/user/repo">
+                        <button class="github-btn" id="cloneBtn">
+                            <i class="fab fa-github"></i>
+                            Clone Repository
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Files & Repositories</h3>
+                    <div class="file-list" id="fileList">
+                        <!-- Files will be populated here -->
                     </div>
                 </div>
             </aside>
 
-            <!-- Main Chat Area -->
-            <main class="glass-card chat-container">
+            <!-- Chat Area -->
+            <main class="chat-area">
                 <div class="chat-header">
-                    <h2 class="chat-title">AI Assistant</h2>
-                    <div class="agent-selector">
-                        <button id="manusButton" class="agent-button active">
-                            <i class="fas fa-brain"></i> Manus
-                        </button>
-                        <button id="flowButton" class="agent-button">
-                            <i class="fas fa-project-diagram"></i> Flow
-                        </button>
-                    </div>
+                    <h2 class="chat-title">AI Agent Chat</h2>
+                    <p class="chat-subtitle">Advanced AI agent powered by OpenManus</p>
                 </div>
 
-                <div class="messages-area" id="messagesArea">
-                    <div class="message agent-message">
-                        <div class="message-content">
-                            🚀 Welcome to OpenManus AI! I'm your advanced AI assistant with file processing capabilities. Upload files, ask questions, and let's get started!
-                        </div>
-                        <div class="message-time">Just now</div>
-                    </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Messages will be populated here -->
                 </div>
 
-                <div class="input-area">
-                    <div class="input-container">
-                        <textarea id="messageInput" class="message-input" placeholder="Type your message here..." rows="1"></textarea>
-                        <div class="input-actions">
-                            <button id="stopButton" class="action-button stop-button hidden">
+                <div class="chat-input-area">
+                    <div class="chat-input-container">
+                        <textarea 
+                            class="chat-input" 
+                            id="chatInput" 
+                            placeholder="Ask me anything... Upload files or clone repositories to get started."
+                            rows="1"
+                        ></textarea>
+                        <div class="chat-actions">
+                            <button class="btn btn-secondary" id="stopBtn" style="display: none;">
                                 <i class="fas fa-stop"></i>
+                                Stop
                             </button>
-                            <button id="sendButton" class="action-button send-button">
+                            <button class="btn btn-primary" id="sendBtn">
                                 <i class="fas fa-paper-plane"></i>
+                                Send
                             </button>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <!-- Right Sidebar - Chat History -->
-            <aside class="glass-card chat-history" id="chatHistory">
-                <h3 class="section-title">
-                    <i class="fas fa-history"></i>
-                    Chat History
-                </h3>
-                <div id="historyList">
-                    <div class="text-center text-gray">
-                        No chat history yet
+            <!-- Right Sidebar -->
+            <aside class="right-sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">API Keys Status</h3>
+                    <div class="api-keys-status" id="apiKeysStatus">
+                        <!-- API keys status will be populated here -->
                     </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Actions</h3>
+                    <button class="btn btn-secondary" id="downloadZipBtn" style="width: 100%; margin-bottom: 10px;">
+                        <i class="fas fa-download"></i>
+                        Download Selected Files
+                    </button>
+                    <button class="btn btn-secondary" id="clearChatBtn" style="width: 100%;">
+                        <i class="fas fa-trash"></i>
+                        Clear Chat
+                    </button>
                 </div>
             </aside>
         </div>
@@ -817,81 +809,56 @@
 
     <script>
         // Global variables
-        let selectedAgent = 'manus';
-        let isProcessing = false;
+        let selectedFiles = [];
         let currentTaskId = null;
-        let uploadedFiles = [];
-        
-        // DOM Elements
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const stopButton = document.getElementById('stopButton');
-        const messagesArea = document.getElementById('messagesArea');
-        const apiStatus = document.getElementById('apiStatus');
-        const manusButton = document.getElementById('manusButton');
-        const flowButton = document.getElementById('flowButton');
+        let isProcessing = false;
+
+        // DOM elements
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
-        const uploadedFilesContainer = document.getElementById('uploadedFiles');
-        const chatHistory = document.getElementById('chatHistory');
-        const historyList = document.getElementById('historyList');
+        const fileList = document.getElementById('fileList');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const githubUrl = document.getElementById('githubUrl');
+        const cloneBtn = document.getElementById('cloneBtn');
+        const apiKeysStatus = document.getElementById('apiKeysStatus');
+        const downloadZipBtn = document.getElementById('downloadZipBtn');
+        const clearChatBtn = document.getElementById('clearChatBtn');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            loadAPIStatus();
+            loadFiles();
             loadChatHistory();
+            loadApiKeysStatus();
             setupEventListeners();
-            
-            // Auto-refresh API status
-            setInterval(loadAPIStatus, 30000);
+            autoResizeTextarea();
         });
 
+        // Event listeners
         function setupEventListeners() {
-            // Message input auto-resize
-            messageInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-            });
-
-            // Send message on Enter (without Shift)
-            messageInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-
-            // Button event listeners
-            sendButton.addEventListener('click', sendMessage);
-            stopButton.addEventListener('click', stopTask);
-            manusButton.addEventListener('click', () => selectAgent('manus'));
-            flowButton.addEventListener('click', () => selectAgent('flow'));
-
-            // File upload events
+            // File upload
             uploadArea.addEventListener('click', () => fileInput.click());
             uploadArea.addEventListener('dragover', handleDragOver);
             uploadArea.addEventListener('dragleave', handleDragLeave);
             uploadArea.addEventListener('drop', handleDrop);
             fileInput.addEventListener('change', handleFileSelect);
+
+            // Chat
+            sendBtn.addEventListener('click', sendMessage);
+            stopBtn.addEventListener('click', stopTask);
+            chatInput.addEventListener('keydown', handleKeyDown);
+
+            // GitHub clone
+            cloneBtn.addEventListener('click', cloneRepository);
+
+            // Actions
+            downloadZipBtn.addEventListener('click', downloadSelectedFiles);
+            clearChatBtn.addEventListener('click', clearChat);
         }
 
-        // Agent Selection
-        function selectAgent(agent) {
-            selectedAgent = agent;
-            
-            // Update UI
-            if (agent === 'manus') {
-                manusButton.classList.add('active');
-                flowButton.classList.remove('active');
-                addMessage('agent', `🧠 Switched to Manus agent. Ready for general AI assistance and file analysis!`);
-            } else {
-                flowButton.classList.add('active');
-                manusButton.classList.remove('active');
-                addMessage('agent', `🔄 Switched to Flow agent. Ready for complex planning and workflow tasks!`);
-            }
-        }
-
-        // File Upload Functions
+        // File upload handlers
         function handleDragOver(e) {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -905,394 +872,454 @@
         function handleDrop(e) {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            handleFiles(files);
+            const files = Array.from(e.dataTransfer.files);
+            uploadFiles(files);
         }
 
         function handleFileSelect(e) {
-            const files = e.target.files;
-            handleFiles(files);
+            const files = Array.from(e.target.files);
+            uploadFiles(files);
         }
 
-        async function handleFiles(files) {
-            for (let file of files) {
-                await uploadFile(file);
+        async function uploadFiles(files) {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        showNotification('File uploaded successfully', 'success');
+                        loadFiles();
+                    } else {
+                        showNotification(result.error, 'error');
+                    }
+                } catch (error) {
+                    showNotification('Upload failed', 'error');
+                }
             }
         }
 
-        async function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
+        // GitHub clone
+        async function cloneRepository() {
+            const url = githubUrl.value.trim();
+            if (!url) {
+                showNotification('Please enter a GitHub URL', 'warning');
+                return;
+            }
+
+            cloneBtn.disabled = true;
+            cloneBtn.innerHTML = '<div class="loading"></div> Cloning...';
 
             try {
-                const response = await fetch('/api/upload', {
+                const response = await fetch('/api/github-clone', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
                 });
 
                 const result = await response.json();
-                
-                if (result.success) {
-                    uploadedFiles.push(result.file_info);
-                    displayUploadedFiles();
-                    showNotification(`✅ ${file.name} uploaded successfully!`, 'success');
+                if (response.ok) {
+                    showNotification('Repository cloned successfully', 'success');
+                    githubUrl.value = '';
+                    loadFiles();
                 } else {
-                    showNotification(`❌ Upload failed: ${result.error}`, 'error');
+                    showNotification(result.error, 'error');
                 }
             } catch (error) {
-                showNotification(`❌ Upload error: ${error.message}`, 'error');
+                showNotification('Clone failed', 'error');
+            } finally {
+                cloneBtn.disabled = false;
+                cloneBtn.innerHTML = '<i class="fab fa-github"></i> Clone Repository';
             }
         }
 
-        function displayUploadedFiles() {
-            uploadedFilesContainer.innerHTML = '';
+        // File management
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const files = await response.json();
+                renderFileList(files);
+            } catch (error) {
+                console.error('Failed to load files:', error);
+            }
+        }
+
+        function renderFileList(files) {
+            fileList.innerHTML = '';
             
-            uploadedFiles.forEach((file, index) => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'file-item';
-                fileDiv.innerHTML = `
-                    <div class="file-icon">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
+            if (files.length === 0) {
+                fileList.innerHTML = '<div class="text-center text-sm" style="color: var(--text-tertiary);">No files uploaded</div>';
+                return;
+            }
+
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.onclick = () => toggleFileSelection(file);
+                
+                const icon = getFileIcon(file.name, file.type);
+                const size = formatFileSize(file.size);
+                
+                fileItem.innerHTML = `
+                    <div class="file-icon">${icon}</div>
                     <div class="file-info">
-                        <div class="file-name">${file.original_name}</div>
-                        <div class="file-size">${formatFileSize(file.size)}</div>
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">${size} • ${file.type}</div>
                     </div>
-                    <button class="file-remove" onclick="removeFile(${index})">
-                        <i class="fas fa-times"></i>
-                    </button>
                 `;
-                uploadedFilesContainer.appendChild(fileDiv);
+                
+                fileList.appendChild(fileItem);
             });
         }
 
-        function removeFile(index) {
-            uploadedFiles.splice(index, 1);
-            displayUploadedFiles();
+        function getFileIcon(filename, type) {
+            const ext = filename.split('.').pop().toLowerCase();
+            
+            if (type === 'github_repo') {
+                return '<i class="fab fa-github"></i>';
+            }
+            
+            const iconMap = {
+                'txt': 'fas fa-file-alt',
+                'pdf': 'fas fa-file-pdf',
+                'png': 'fas fa-file-image',
+                'jpg': 'fas fa-file-image',
+                'jpeg': 'fas fa-file-image',
+                'gif': 'fas fa-file-image',
+                'py': 'fab fa-python',
+                'js': 'fab fa-js-square',
+                'html': 'fab fa-html5',
+                'css': 'fab fa-css3-alt',
+                'json': 'fas fa-file-code',
+                'xml': 'fas fa-file-code',
+                'csv': 'fas fa-file-csv',
+                'md': 'fas fa-file-alt'
+            };
+            
+            return `<i class="${iconMap[ext] || 'fas fa-file'}"></i>`;
         }
 
         function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // API Status
-        async function loadAPIStatus() {
-            try {
-                const response = await fetch('/api/keys/status');
-                const keys = await response.json();
-
-                let statusHTML = '';
-                keys.forEach(key => {
-                    const isOnline = key.available;
-                    const usagePercentage = Math.round((key.usage.requests_this_day / key.limits.max_per_day) * 100);
-                    
-                    statusHTML += `
-                        <div class="api-status-item">
-                            <div class="status-indicator ${isOnline ? 'online' : 'offline'}"></div>
-                            <div class="api-info">
-                                <div class="api-name">${key.name}</div>
-                                <div class="api-usage">${key.usage.requests_this_day}/${key.limits.max_per_day} (${usagePercentage}%)</div>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                apiStatus.innerHTML = statusHTML;
-            } catch (error) {
-                apiStatus.innerHTML = `
-                    <div class="api-status-item">
-                        <div class="status-indicator offline"></div>
-                        <div class="api-info">
-                            <div class="api-name">Error loading status</div>
-                        </div>
-                    </div>
-                `;
+            if (typeof bytes === 'number') {
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
             }
+            return bytes + ' files';
         }
 
-        // Chat History
-        async function loadChatHistory() {
-            try {
-                const response = await fetch('/api/chat-history');
-                const data = await response.json();
-                
-                if (data.history && data.history.length > 0) {
-                    displayChatHistory(data.history.slice(-10)); // Show last 10 conversations
+        function toggleFileSelection(file) {
+            const index = selectedFiles.findIndex(f => f.path === file.path);
+            if (index > -1) {
+                selectedFiles.splice(index, 1);
+            } else {
+                selectedFiles.push(file);
+            }
+            updateFileSelection();
+        }
+
+        function updateFileSelection() {
+            const fileItems = fileList.querySelectorAll('.file-item');
+            fileItems.forEach((item, index) => {
+                const file = selectedFiles.find(f => f.path === item.dataset.path);
+                if (file) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
                 }
-            } catch (error) {
-                console.error('Error loading chat history:', error);
-            }
-        }
-
-        function displayChatHistory(history) {
-            historyList.innerHTML = '';
-            
-            history.reverse().forEach(chat => {
-                const historyDiv = document.createElement('div');
-                historyDiv.className = 'history-item';
-                historyDiv.onclick = () => loadHistoryItem(chat);
-                
-                const preview = chat.user_message.substring(0, 50) + (chat.user_message.length > 50 ? '...' : '');
-                const time = new Date(chat.timestamp).toLocaleString();
-                
-                historyDiv.innerHTML = `
-                    <div class="history-preview">${preview}</div>
-                    <div class="history-time">${time}</div>
-                `;
-                
-                historyList.appendChild(historyDiv);
             });
         }
 
-        function loadHistoryItem(chat) {
-            // Clear current messages
-            messagesArea.innerHTML = '';
-            
-            // Add historical messages
-            addMessage('user', chat.user_message, chat.uploaded_files);
-            addMessage('agent', chat.agent_response);
-            
-            // Select appropriate agent
-            selectAgent(chat.agent_type);
-        }
-
-        // Message Functions
-        function addMessage(sender, text, files = []) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}-message`;
-            
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            let filesHTML = '';
-            if (files && files.length > 0) {
-                filesHTML = '<div class="message-files">';
-                files.forEach(file => {
-                    filesHTML += `<span class="message-file-tag"><i class="fas fa-paperclip"></i> ${file.original_name}</span>`;
-                });
-                filesHTML += '</div>';
-            }
-            
-            messageDiv.innerHTML = `
-                <div class="message-content">${text}</div>
-                ${filesHTML}
-                <div class="message-time">${time}</div>
-            `;
-            
-            messagesArea.appendChild(messageDiv);
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        }
-
-        function showTypingIndicator() {
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'typing-indicator';
-            typingDiv.id = 'typingIndicator';
-            typingDiv.innerHTML = `
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <span style="margin-left: 10px; color: var(--gray);">AI is thinking...</span>
-            `;
-            messagesArea.appendChild(typingDiv);
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        }
-
-        function hideTypingIndicator() {
-            const typingIndicator = document.getElementById('typingIndicator');
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-        }
-
-        // Send Message
+        // Chat functionality
         async function sendMessage() {
-            const message = messageInput.value.trim();
+            const message = chatInput.value.trim();
             if (!message || isProcessing) return;
 
-            // Generate task ID
-            currentTaskId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            
-            isProcessing = true;
-            updateUIForProcessing(true);
-            
             // Add user message
-            addMessage('user', message, uploadedFiles);
-            
-            // Clear input
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            
-            // Show typing indicator
-            showTypingIndicator();
+            addMessage('user', message);
+            chatInput.value = '';
+            autoResizeTextarea();
+
+            // Prepare files context
+            const uploadedFiles = selectedFiles.map(file => ({
+                filename: file.name,
+                original_name: file.name,
+                path: file.path
+            }));
+
+            // Start processing
+            isProcessing = true;
+            currentTaskId = generateTaskId();
+            updateUIState();
 
             try {
-                const endpoint = selectedAgent === 'manus' ? '/api/chat-stream' : '/api/flow-stream';
-                const response = await fetch(endpoint, {
+                const response = await fetch('/api/chat-stream', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ 
-                        message, 
+                    body: JSON.stringify({
+                        message: message,
                         task_id: currentTaskId,
-                        uploaded_files: uploadedFiles 
-                    }),
+                        uploaded_files: uploadedFiles
+                    })
                 });
 
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let buffer = '';
-                let agentMessage = '';
+                let aiMessage = '';
 
-                // Hide typing indicator and create agent message div
-                hideTypingIndicator();
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message agent-message';
-                messagesArea.appendChild(messageDiv);
-                
-                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                messageDiv.innerHTML = `<div class="message-content"></div><div class="message-time">${time}</div>`;
-                const contentDiv = messageDiv.querySelector('.message-content');
+                // Add AI message placeholder
+                const messageElement = addMessage('ai', '');
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    buffer += chunk;
-                    
-                    // Process buffer line by line
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-                    
-                    for (const line of lines) {
-                        if (line.includes('0303030')) {
-                            // End of stream
-                            break;
-                        }
-                        
-                        agentMessage += line + '\n';
-                        contentDiv.innerHTML = formatMessage(agentMessage);
-                        messagesArea.scrollTop = messagesArea.scrollHeight;
+                    const chunk = decoder.decode(value);
+                    if (chunk.includes('0303030')) {
+                        break;
                     }
-                }
 
-                // Process any remaining content
-                if (buffer && !buffer.includes('0303030')) {
-                    agentMessage += buffer;
-                    contentDiv.innerHTML = formatMessage(agentMessage);
+                    aiMessage += chunk;
+                    messageElement.querySelector('.message-content').textContent = aiMessage;
+                    scrollToBottom();
                 }
-
-                // Clear uploaded files after successful processing
-                uploadedFiles = [];
-                displayUploadedFiles();
 
             } catch (error) {
-                hideTypingIndicator();
-                addMessage('agent', `❌ Error: ${error.message}`);
-                console.error('Error:', error);
+                console.error('Chat error:', error);
+                addMessage('ai', 'Sorry, an error occurred while processing your request.');
             } finally {
                 isProcessing = false;
                 currentTaskId = null;
-                updateUIForProcessing(false);
-                loadAPIStatus();
-                loadChatHistory();
+                updateUIState();
             }
         }
 
-        function formatMessage(text) {
-            // Basic formatting for better display
-            return text
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 3px;">$1</code>');
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            const avatar = type === 'user' ? 'U' : 'AI';
+            const avatarClass = type === 'user' ? '' : 'ai';
+            const contentClass = type === 'user' ? '' : 'ai';
+            const time = new Date().toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="message-${type}">
+                    <div class="message-avatar ${avatarClass}">${avatar}</div>
+                    <div class="message-content ${contentClass}">${content}</div>
+                </div>
+                <div class="message-time">${time}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+            return messageDiv;
         }
 
-        // Stop Task
         async function stopTask() {
             if (!currentTaskId) return;
 
             try {
-                const response = await fetch('/api/stop-task', {
+                await fetch('/api/stop-task', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ task_id: currentTaskId }),
+                    body: JSON.stringify({ task_id: currentTaskId })
+                });
+            } catch (error) {
+                console.error('Failed to stop task:', error);
+            }
+        }
+
+        function updateUIState() {
+            sendBtn.disabled = isProcessing;
+            stopBtn.style.display = isProcessing ? 'block' : 'none';
+            
+            if (isProcessing) {
+                sendBtn.innerHTML = '<div class="loading"></div> Processing...';
+            } else {
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+            }
+        }
+
+        // Utility functions
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResizeTextarea() {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+        }
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function generateTaskId() {
+            return 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // API Keys Status
+        async function loadApiKeysStatus() {
+            try {
+                const response = await fetch('/api/keys/status');
+                const keys = await response.json();
+                renderApiKeysStatus(keys);
+            } catch (error) {
+                console.error('Failed to load API keys status:', error);
+            }
+        }
+
+        function renderApiKeysStatus(keys) {
+            apiKeysStatus.innerHTML = '';
+            
+            keys.forEach(key => {
+                const keyDiv = document.createElement('div');
+                keyDiv.className = 'api-key-item';
+                
+                const statusClass = key.is_available ? 'status-available' : 'status-unavailable';
+                const statusText = key.is_available ? 'Available' : 'Unavailable';
+                
+                keyDiv.innerHTML = `
+                    <div class="api-key-header">
+                        <div class="api-key-name">${key.name}</div>
+                        <div class="api-key-status ${statusClass}">
+                            <i class="fas fa-circle"></i>
+                            ${statusText}
+                        </div>
+                    </div>
+                    <div class="api-key-usage">
+                        Usage: ${key.usage.minute}/${key.limits.minute} per minute
+                    </div>
+                `;
+                
+                apiKeysStatus.appendChild(keyDiv);
+            });
+        }
+
+        // Download functionality
+        async function downloadSelectedFiles() {
+            if (selectedFiles.length === 0) {
+                showNotification('Please select files to download', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/download-zip', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: selectedFiles.map(f => f.path)
+                    })
                 });
 
                 const result = await response.json();
-                if (result.success) {
-                    showNotification('🛑 Task stopped successfully', 'info');
+                if (response.ok) {
+                    // Trigger download
+                    const link = document.createElement('a');
+                    link.href = result.download_url;
+                    link.download = result.zip_file;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showNotification('Download started', 'success');
                 } else {
-                    showNotification('⚠️ Could not stop task', 'warning');
+                    showNotification(result.error, 'error');
                 }
             } catch (error) {
-                showNotification('❌ Error stopping task', 'error');
+                showNotification('Download failed', 'error');
             }
         }
 
-        function updateUIForProcessing(processing) {
-            sendButton.disabled = processing;
-            messageInput.disabled = processing;
-            
-            if (processing) {
-                sendButton.innerHTML = '<div class="spinner"></div>';
-                stopButton.classList.remove('hidden');
-            } else {
-                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-                stopButton.classList.add('hidden');
+        // Chat history
+        async function loadChatHistory() {
+            try {
+                const response = await fetch('/api/chat-history');
+                const history = await response.json();
+                
+                history.forEach(item => {
+                    if (item.user_message) {
+                        addMessage('user', item.user_message);
+                    }
+                    if (item.agent_response) {
+                        addMessage('ai', item.agent_response);
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load chat history:', error);
             }
         }
 
-        // Utility Functions
+        function clearChat() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                chatMessages.innerHTML = '';
+                showNotification('Chat cleared', 'success');
+            }
+        }
+
+        // Notifications
         function showNotification(message, type = 'info') {
-            // Simple notification system
+            // Create notification element
             const notification = document.createElement('div');
             notification.style.cssText = `
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                padding: 15px 20px;
-                background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : type === 'warning' ? 'var(--warning)' : 'var(--info)'};
+                padding: 12px 20px;
+                border-radius: 8px;
                 color: white;
-                border-radius: 10px;
-                box-shadow: var(--shadow);
+                font-weight: 500;
                 z-index: 1000;
                 animation: slideIn 0.3s ease;
             `;
+            
+            // Set background color based on type
+            const colors = {
+                success: 'var(--accent-success)',
+                error: 'var(--accent-danger)',
+                warning: 'var(--accent-warning)',
+                info: 'var(--accent-info)'
+            };
+            
+            notification.style.background = colors[type] || colors.info;
             notification.textContent = message;
             
             document.body.appendChild(notification);
             
+            // Remove after 3 seconds
             setTimeout(() => {
                 notification.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => notification.remove(), 300);
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
             }, 3000);
         }
 
-        function clearChat() {
-            messagesArea.innerHTML = `
-                <div class="message agent-message">
-                    <div class="message-content">
-                        🚀 Chat cleared! How can I help you today?
-                    </div>
-                    <div class="message-time">Just now</div>
-                </div>
-            `;
-        }
-
-        function toggleHistory() {
-            chatHistory.style.display = chatHistory.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // Add CSS animations
+        // Add CSS animations for notifications
         const style = document.createElement('style');
         style.textContent = `
             @keyframes slideIn {
@@ -1305,6 +1332,9 @@
             }
         `;
         document.head.appendChild(style);
+
+        // Auto-refresh API keys status every 30 seconds
+        setInterval(loadApiKeysStatus, 30000);
     </script>
 </body>
 </html>
