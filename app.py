@@ -10,6 +10,11 @@ import queue
 from app.agent.manus import Manus
 from app.logger import logger, log_queue
 from app.config import config as app_config
+from app.git_manager import GitManager
+from app.file_manager import AdvancedFileManager
+from app.ai_code_modifier import AICodeModifier
+from app.project_templates import ProjectTemplateManager
+from app.llm import LLMClient
 import threading
 import toml
 import random
@@ -298,6 +303,14 @@ class AdvancedAPIKeyManager:
 # Initialize the advanced API key manager
 api_key_manager = AdvancedAPIKeyManager(config['llm']['api_keys'])
 
+# Initialize enhanced components
+git_manager = GitManager(app.config['WORKSPACE'])
+file_manager = AdvancedFileManager(app.config['WORKSPACE'], app.config['UPLOAD_FOLDER'])
+project_template_manager = ProjectTemplateManager(app.config['WORKSPACE'])
+
+# Initialize AI code modifier (will be initialized with LLM client when needed)
+ai_code_modifier = None
+
 # 初始化工作目录
 os.makedirs(app.config['WORKSPACE'], exist_ok=True)
 LOG_FILE = 'logs/root_stream.log'
@@ -313,6 +326,11 @@ def get_files_pathlib(root_dir):
 def index():
     files = os.listdir(app.config['WORKSPACE'])
     return render_template('index.html', files=files)
+
+@app.route('/ide')
+def ide():
+    """Enhanced VS Code-like IDE interface"""
+    return render_template('enhanced_ide.html')
 
 @app.route('/file/<filename>')
 def file(filename):
@@ -861,6 +879,545 @@ def flow_stream():
         yield """0303030"""
 
     return Response(generate(), mimetype="text/plain")
+
+# =============================================================================
+# GIT MANAGEMENT API ENDPOINTS
+# =============================================================================
+
+@app.route('/api/git/repositories', methods=['GET'])
+def get_repositories():
+    """Get list of Git repositories in workspace"""
+    try:
+        repositories = git_manager.list_repositories()
+        return jsonify({'success': True, 'repositories': repositories})
+    except Exception as e:
+        logger.error(f"Error getting repositories: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/clone', methods=['POST'])
+def clone_repository():
+    """Clone a Git repository"""
+    try:
+        data = request.get_json()
+        repo_url = data.get('repo_url')
+        target_dir = data.get('target_dir')
+        branch = data.get('branch')
+        
+        if not repo_url:
+            return jsonify({'success': False, 'error': 'Repository URL is required'}), 400
+        
+        result = git_manager.clone_repository(repo_url, target_dir, branch)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error cloning repository: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/info/<path:repo_path>', methods=['GET'])
+def get_repository_info(repo_path):
+    """Get repository information"""
+    try:
+        full_path = os.path.join(app.config['WORKSPACE'], repo_path)
+        info = git_manager.get_repository_info(full_path)
+        return jsonify({'success': True, 'info': info})
+    except Exception as e:
+        logger.error(f"Error getting repository info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/branch', methods=['POST'])
+def create_branch():
+    """Create a new Git branch"""
+    try:
+        data = request.get_json()
+        repo_path = data.get('repo_path')
+        branch_name = data.get('branch_name')
+        checkout = data.get('checkout', True)
+        
+        if not repo_path or not branch_name:
+            return jsonify({'success': False, 'error': 'Repository path and branch name are required'}), 400
+        
+        full_path = os.path.join(app.config['WORKSPACE'], repo_path)
+        result = git_manager.create_branch(full_path, branch_name, checkout)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error creating branch: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/checkout', methods=['POST'])
+def checkout_branch():
+    """Checkout a Git branch"""
+    try:
+        data = request.get_json()
+        repo_path = data.get('repo_path')
+        branch_name = data.get('branch_name')
+        
+        if not repo_path or not branch_name:
+            return jsonify({'success': False, 'error': 'Repository path and branch name are required'}), 400
+        
+        full_path = os.path.join(app.config['WORKSPACE'], repo_path)
+        result = git_manager.checkout_branch(full_path, branch_name)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error checking out branch: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/commit', methods=['POST'])
+def commit_changes():
+    """Commit changes to repository"""
+    try:
+        data = request.get_json()
+        repo_path = data.get('repo_path')
+        message = data.get('message')
+        files = data.get('files')
+        
+        if not repo_path or not message:
+            return jsonify({'success': False, 'error': 'Repository path and commit message are required'}), 400
+        
+        full_path = os.path.join(app.config['WORKSPACE'], repo_path)
+        result = git_manager.commit_changes(full_path, message, files)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error committing changes: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/push', methods=['POST'])
+def push_changes():
+    """Push changes to remote repository"""
+    try:
+        data = request.get_json()
+        repo_path = data.get('repo_path')
+        remote = data.get('remote', 'origin')
+        branch = data.get('branch')
+        
+        if not repo_path:
+            return jsonify({'success': False, 'error': 'Repository path is required'}), 400
+        
+        full_path = os.path.join(app.config['WORKSPACE'], repo_path)
+        result = git_manager.push_changes(full_path, remote, branch)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error pushing changes: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/git/pull', methods=['POST'])
+def pull_changes():
+    """Pull changes from remote repository"""
+    try:
+        data = request.get_json()
+        repo_path = data.get('repo_path')
+        remote = data.get('remote', 'origin')
+        branch = data.get('branch')
+        
+        if not repo_path:
+            return jsonify({'success': False, 'error': 'Repository path is required'}), 400
+        
+        full_path = os.path.join(app.config['WORKSPACE'], repo_path)
+        result = git_manager.pull_changes(full_path, remote, branch)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error pulling changes: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# =============================================================================
+# ADVANCED FILE MANAGEMENT API ENDPOINTS
+# =============================================================================
+
+@app.route('/api/files/tree', methods=['GET'])
+def get_directory_tree():
+    """Get directory tree structure"""
+    try:
+        path = request.args.get('path')
+        max_depth = int(request.args.get('max_depth', 3))
+        
+        tree = file_manager.get_directory_tree(path, max_depth)
+        return jsonify({'success': True, 'tree': tree})
+        
+    except Exception as e:
+        logger.error(f"Error getting directory tree: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/create-directory', methods=['POST'])
+def create_directory():
+    """Create a new directory"""
+    try:
+        data = request.get_json()
+        path = data.get('path')
+        parents = data.get('parents', True)
+        
+        if not path:
+            return jsonify({'success': False, 'error': 'Path is required'}), 400
+        
+        result = file_manager.create_directory(path, parents)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error creating directory: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/delete', methods=['DELETE'])
+def delete_item():
+    """Delete a file or directory"""
+    try:
+        data = request.get_json()
+        path = data.get('path')
+        force = data.get('force', False)
+        
+        if not path:
+            return jsonify({'success': False, 'error': 'Path is required'}), 400
+        
+        result = file_manager.delete_item(path, force)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error deleting item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/copy', methods=['POST'])
+def copy_item():
+    """Copy a file or directory"""
+    try:
+        data = request.get_json()
+        source = data.get('source')
+        destination = data.get('destination')
+        overwrite = data.get('overwrite', False)
+        
+        if not source or not destination:
+            return jsonify({'success': False, 'error': 'Source and destination are required'}), 400
+        
+        result = file_manager.copy_item(source, destination, overwrite)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error copying item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/move', methods=['POST'])
+def move_item():
+    """Move/rename a file or directory"""
+    try:
+        data = request.get_json()
+        source = data.get('source')
+        destination = data.get('destination')
+        overwrite = data.get('overwrite', False)
+        
+        if not source or not destination:
+            return jsonify({'success': False, 'error': 'Source and destination are required'}), 400
+        
+        result = file_manager.move_item(source, destination, overwrite)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error moving item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/read', methods=['GET'])
+def read_file():
+    """Read file content"""
+    try:
+        file_path = request.args.get('path')
+        encoding = request.args.get('encoding', 'utf-8')
+        max_size = int(request.args.get('max_size', 10*1024*1024))
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'File path is required'}), 400
+        
+        result = file_manager.read_file(file_path, encoding, max_size)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error reading file: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/write', methods=['POST'])
+def write_file():
+    """Write content to file"""
+    try:
+        data = request.get_json()
+        file_path = data.get('path')
+        content = data.get('content')
+        encoding = data.get('encoding', 'utf-8')
+        create_dirs = data.get('create_dirs', True)
+        
+        if not file_path or content is None:
+            return jsonify({'success': False, 'error': 'File path and content are required'}), 400
+        
+        result = file_manager.write_file(file_path, content, encoding, create_dirs)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error writing file: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/search', methods=['GET'])
+def search_files():
+    """Search for files by name or content"""
+    try:
+        pattern = request.args.get('pattern')
+        search_path = request.args.get('path')
+        case_sensitive = request.args.get('case_sensitive', 'false').lower() == 'true'
+        file_content = request.args.get('file_content', 'false').lower() == 'true'
+        max_results = int(request.args.get('max_results', 100))
+        
+        if not pattern:
+            return jsonify({'success': False, 'error': 'Search pattern is required'}), 400
+        
+        result = file_manager.search_files(pattern, search_path, case_sensitive, file_content, max_results)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error searching files: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/info', methods=['GET'])
+def get_file_info():
+    """Get file information"""
+    try:
+        file_path = request.args.get('path')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'File path is required'}), 400
+        
+        result = file_manager.get_file_info(file_path)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting file info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/extract', methods=['POST'])
+def extract_archive():
+    """Extract archive file"""
+    try:
+        data = request.get_json()
+        archive_path = data.get('archive_path')
+        destination = data.get('destination')
+        
+        if not archive_path:
+            return jsonify({'success': False, 'error': 'Archive path is required'}), 400
+        
+        result = file_manager.extract_archive(archive_path, destination)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error extracting archive: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/create-archive', methods=['POST'])
+def create_archive():
+    """Create archive from files/directories"""
+    try:
+        data = request.get_json()
+        source_path = data.get('source_path')
+        archive_path = data.get('archive_path')
+        archive_type = data.get('archive_type', 'zip')
+        
+        if not source_path or not archive_path:
+            return jsonify({'success': False, 'error': 'Source and archive paths are required'}), 400
+        
+        result = file_manager.create_archive(source_path, archive_path, archive_type)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error creating archive: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# =============================================================================
+# AI CODE MODIFICATION API ENDPOINTS
+# =============================================================================
+
+def get_ai_code_modifier():
+    """Get AI code modifier instance, initializing if needed"""
+    global ai_code_modifier
+    if ai_code_modifier is None:
+        # Get an available API key for the LLM client
+        result = api_key_manager.get_available_api_key()
+        if not result:
+            raise Exception("No API keys available for AI code modification")
+        
+        api_key, _ = result
+        llm_client = LLMClient(api_key=api_key)
+        ai_code_modifier = AICodeModifier(llm_client)
+    
+    return ai_code_modifier
+
+@app.route('/api/ai/generate-code', methods=['POST'])
+def generate_code():
+    """Generate code with AI"""
+    try:
+        data = request.get_json()
+        prompt = data.get('prompt')
+        language = data.get('language')
+        context = data.get('context')
+        
+        if not prompt or not language:
+            return jsonify({'success': False, 'error': 'Prompt and language are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.generate_code(prompt, language, context)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error generating code: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/refactor-code', methods=['POST'])
+def refactor_code():
+    """Refactor code with AI"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        refactor_type = data.get('refactor_type')
+        language = data.get('language')
+        instructions = data.get('instructions')
+        
+        if not code or not refactor_type or not language:
+            return jsonify({'success': False, 'error': 'Code, refactor type, and language are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.refactor_code(code, refactor_type, language, instructions)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error refactoring code: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/explain-code', methods=['POST'])
+def explain_code():
+    """Explain code with AI"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        language = data.get('language')
+        
+        if not code or not language:
+            return jsonify({'success': False, 'error': 'Code and language are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.explain_code(code, language)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error explaining code: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/fix-code', methods=['POST'])
+def fix_code():
+    """Fix code issues with AI"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        language = data.get('language')
+        error_message = data.get('error_message')
+        
+        if not code or not language:
+            return jsonify({'success': False, 'error': 'Code and language are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.fix_code_issues(code, language, error_message)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error fixing code: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/convert-code', methods=['POST'])
+def convert_code():
+    """Convert code between languages with AI"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        source_language = data.get('source_language')
+        target_language = data.get('target_language')
+        
+        if not code or not source_language or not target_language:
+            return jsonify({'success': False, 'error': 'Code, source language, and target language are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.convert_code(code, source_language, target_language)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error converting code: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/generate-tests', methods=['POST'])
+def generate_tests():
+    """Generate unit tests with AI"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        language = data.get('language')
+        test_framework = data.get('test_framework')
+        
+        if not code or not language:
+            return jsonify({'success': False, 'error': 'Code and language are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.generate_tests(code, language, test_framework)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error generating tests: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/modify-file', methods=['POST'])
+def modify_file():
+    """Modify a code file with AI assistance"""
+    try:
+        data = request.get_json()
+        file_path = data.get('file_path')
+        modification_type = data.get('modification_type')
+        instructions = data.get('instructions')
+        backup = data.get('backup', True)
+        
+        if not file_path or not modification_type or not instructions:
+            return jsonify({'success': False, 'error': 'File path, modification type, and instructions are required'}), 400
+        
+        modifier = get_ai_code_modifier()
+        result = modifier.modify_file(file_path, modification_type, instructions, backup)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error modifying file: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# =============================================================================
+# PROJECT TEMPLATE API ENDPOINTS
+# =============================================================================
+
+@app.route('/api/templates/list', methods=['GET'])
+def list_templates():
+    """List available project templates"""
+    try:
+        templates = project_template_manager.list_templates()
+        return jsonify({'success': True, 'templates': templates})
+    except Exception as e:
+        logger.error(f"Error listing templates: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/templates/create-project', methods=['POST'])
+def create_project():
+    """Create a new project from template"""
+    try:
+        data = request.get_json()
+        template_id = data.get('template_id')
+        project_name = data.get('project_name')
+        custom_vars = data.get('custom_vars', {})
+        
+        if not template_id or not project_name:
+            return jsonify({'success': False, 'error': 'Template ID and project name are required'}), 400
+        
+        result = project_template_manager.create_project(template_id, project_name, custom_vars)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error creating project: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # WSGI entry point for deployment
 application = app
