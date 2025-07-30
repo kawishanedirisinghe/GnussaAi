@@ -19,12 +19,14 @@ import threading
 import toml
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import logging
 import json
 import uuid
 from werkzeug.utils import secure_filename
 import shutil
+from app.tool.manus_agent import ManusAgent
+from app.tool.advanced_code_generator import AdvancedCodeGenerator
 
 app = Flask(__name__)
 app.config['WORKSPACE'] = 'workspace'
@@ -308,258 +310,410 @@ git_manager = GitManager(app.config['WORKSPACE'])
 file_manager = AdvancedFileManager(app.config['WORKSPACE'], app.config['UPLOAD_FOLDER'])
 project_template_manager = ProjectTemplateManager(app.config['WORKSPACE'])
 
-# Initialize AI code modifier (will be initialized with LLM client when needed)
-ai_code_modifier = None
+# Initialize enhanced Manus agent
+manus_agent = ManusAgent(api_key_manager)
 
-# 初始化工作目录
-os.makedirs(app.config['WORKSPACE'], exist_ok=True)
-LOG_FILE = 'logs/root_stream.log'
-FILE_CHECK_INTERVAL = 2  # 文件检查间隔（秒）
-PROCESS_TIMEOUT = 6099999990    # 最长处理时间（秒）
-
-def get_files_pathlib(root_dir):
-    """使用pathlib递归获取文件路径"""
-    root = Path(root_dir)
-    return [str(path) for path in root.glob('**/*') if path.is_file()]
-
-@app.route('/')
-def index():
-    files = os.listdir(app.config['WORKSPACE'])
-    return render_template('index.html', files=files)
-
-@app.route('/ide')
-def ide():
-    """Enhanced VS Code-like IDE interface"""
-    return render_template('enhanced_ide.html')
-
-@app.route('/file/<filename>')
-def file(filename):
-    file_path = os.path.join(app.config['WORKSPACE'], filename)
-    if os.path.isfile(file_path):
-        mime_type, _ = mimetypes.guess_type(filename)
-        if mime_type and mime_type.startswith('text/'):
-            if mime_type == 'text/html':
-                return send_from_directory(app.config['WORKSPACE'], filename)
-            else:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                return render_template('code.html', filename=filename, content=content)
-        elif mime_type == 'application/pdf':
-            return send_from_directory(app.config['WORKSPACE'], filename)
-        else:
-            return send_from_directory(app.config['WORKSPACE'], filename)
-    else:
-        return "File not found", 404
-
-@app.route('/api/keys/status')
-def api_keys_status():
-    """API endpoint to get status of all API keys"""
-    return jsonify(api_key_manager.get_keys_status())
-
-# File upload utilities
-def allowed_file(filename):
-    """Check if file type is allowed"""
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'csv', 'xlsx', 'py', 'js', 'html', 'css', 'json', 'xml', 'md'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def save_chat_history(chat_data):
-    """Save chat history to file"""
+# Get AI code modifier instance
+def get_ai_code_modifier():
+    """Get AI code modifier instance with available LLM client"""
     try:
-        if os.path.exists(app.config['CHAT_HISTORY_FILE']):
-            with open(app.config['CHAT_HISTORY_FILE'], 'r', encoding='utf-8') as f:
-                history = json.load(f)
-        else:
-            history = []
-        
-        history.append(chat_data)
-        
-        # Keep only last 100 conversations
-        if len(history) > 100:
-            history = history[-100:]
-        
-        with open(app.config['CHAT_HISTORY_FILE'], 'w', encoding='utf-8') as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
+        available_key = api_key_manager.get_available_api_key()
+        if available_key:
+            llm_client = LLMClient(
+                api_key=available_key['api_key'],
+                provider=available_key['provider'],
+                model=available_key.get('model', 'gpt-3.5-turbo')
+            )
+            return AICodeModifier(llm_client)
+        return None
     except Exception as e:
-        logger.error(f"Error saving chat history: {e}")
+        logger.error(f"Error getting AI code modifier: {e}")
+        return None
 
-def load_chat_history():
-    """Load chat history from file"""
+# Enhanced main function with Manus agent integration
+def main(query: str, flow_id: str = None) -> Dict[str, Any]:
+    """Enhanced main function with comprehensive AI assistance"""
     try:
-        if os.path.exists(app.config['CHAT_HISTORY_FILE']):
-            with open(app.config['CHAT_HISTORY_FILE'], 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return []
+        logger.info(f"Processing query with Manus Agent: {query}")
+        
+        # Use Manus agent for all AI-powered tasks
+        result = manus_agent.execute(request=query)
+        
+        if result['success']:
+            logger.info(f"Manus Agent completed successfully: {result.get('message', '')}")
+            return {
+                'success': True,
+                'result': result,
+                'agent': 'manus',
+                'flow_id': flow_id,
+                'timestamp': datetime.now().isoformat()
+            }
+        else:
+            logger.warning(f"Manus Agent failed: {result.get('error', 'Unknown error')}")
+            return {
+                'success': False,
+                'error': result.get('error', 'Unknown error'),
+                'agent': 'manus',
+                'flow_id': flow_id,
+                'timestamp': datetime.now().isoformat()
+            }
+    
     except Exception as e:
-        logger.error(f"Error loading chat history: {e}")
-        return []
+        logger.error(f"Error in main function: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'flow_id': flow_id,
+            'timestamp': datetime.now().isoformat()
+        }
 
-@app.route('/api/upload', methods=['POST'])
+# Enhanced API endpoint for Manus agent
+@app.route('/api/manus', methods=['POST'])
+def api_manus():
+    """Enhanced API endpoint for Manus agent with comprehensive features"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'request' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Request is required',
+                'example': {
+                    'request': 'Create a Flask web application with user authentication',
+                    'task_type': 'project_generation',  # optional
+                    'options': {}  # optional
+                }
+            }), 400
+        
+        # Execute with Manus agent
+        result = manus_agent.execute(
+            request=data['request'],
+            task_type=data.get('task_type', 'auto_detect'),
+            **data.get('options', {})
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in Manus API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint for advanced code generation
+@app.route('/api/manus/generate-project', methods=['POST'])
+def api_generate_project():
+    """API endpoint for advanced project generation"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'description' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Project description is required'
+            }), 400
+        
+        # Use Manus agent for project generation
+        result = manus_agent.execute(
+            request=data['description'],
+            task_type='project_generation',
+            **data
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in project generation API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint for code testing
+@app.route('/api/manus/test-code', methods=['POST'])
+def api_test_code():
+    """API endpoint for code testing and validation"""
+    try:
+        data = request.get_json()
+        
+        # Use Manus agent for testing
+        result = manus_agent.execute(
+            request=data.get('request', 'Generate comprehensive tests for my code'),
+            task_type='testing',
+            **data
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in testing API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint for bug fixing
+@app.route('/api/manus/fix-bugs', methods=['POST'])
+def api_fix_bugs():
+    """API endpoint for bug fixing and code repair"""
+    try:
+        data = request.get_json()
+        
+        # Use Manus agent for bug fixing
+        result = manus_agent.execute(
+            request=data.get('request', 'Fix bugs and issues in my code'),
+            task_type='bug_fixing',
+            **data
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in bug fixing API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint for code analysis
+@app.route('/api/manus/analyze-code', methods=['POST'])
+def api_analyze_code():
+    """API endpoint for code analysis and review"""
+    try:
+        data = request.get_json()
+        
+        # Use Manus agent for code analysis
+        result = manus_agent.execute(
+            request=data.get('request', 'Analyze my code quality and structure'),
+            task_type='code_analysis',
+            **data
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in code analysis API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Enhanced API endpoint for file operations via Manus
+@app.route('/api/manus/file-operation', methods=['POST'])
+def api_manus_file_operation():
+    """API endpoint for file operations via Manus agent"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'request' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'File operation request is required'
+            }), 400
+        
+        # Use Manus agent for file operations
+        result = manus_agent.execute(
+            request=data['request'],
+            task_type='file_management',
+            **data
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in file operation API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Enhanced API endpoint for Git operations via Manus
+@app.route('/api/manus/git-operation', methods=['POST'])
+def api_manus_git_operation():
+    """API endpoint for Git operations via Manus agent"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'request' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Git operation request is required'
+            }), 400
+        
+        # Use Manus agent for Git operations
+        result = manus_agent.execute(
+            request=data['request'],
+            task_type='git_operations',
+            **data
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in Git operation API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint for Manus agent conversation
+@app.route('/api/manus/chat', methods=['POST'])
+def api_manus_chat():
+    """API endpoint for conversational AI assistance"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'message' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Message is required for chat'
+            }), 400
+        
+        # Use Manus agent for conversation
+        result = manus_agent.execute(
+            request=data['message'],
+            task_type='conversation'
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in chat API: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint to get Manus agent status and capabilities
+@app.route('/api/manus/status', methods=['GET'])
+def api_manus_status():
+    """Get Manus agent status and capabilities"""
+    try:
+        # Check if AI features are available
+        ai_available = manus_agent.ai_modifier is not None
+        code_gen_available = manus_agent.code_generator is not None
+        
+        status = {
+            'success': True,
+            'agent_status': 'active',
+            'capabilities': {
+                'project_generation': code_gen_available,
+                'code_testing': ai_available,
+                'bug_fixing': ai_available,
+                'code_analysis': ai_available,
+                'file_management': True,
+                'git_operations': True,
+                'conversation': True
+            },
+            'task_history_count': len(manus_agent.get_task_history()),
+            'conversation_context_count': len(manus_agent.get_conversation_context()),
+            'workspace_root': str(manus_agent.workspace_root),
+            'available_languages': ['python', 'javascript', 'typescript', 'java', 'cpp', 'c', 'csharp', 'php', 'ruby', 'go'],
+            'supported_frameworks': ['flask', 'fastapi', 'django', 'react', 'vue', 'express', 'nodejs']
+        }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error getting Manus status: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint to get task history
+@app.route('/api/manus/history', methods=['GET'])
+def api_manus_history():
+    """Get Manus agent task history"""
+    try:
+        history = manus_agent.get_task_history()
+        return jsonify({
+            'success': True,
+            'history': history,
+            'total_tasks': len(history)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting task history: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# New API endpoint to get conversation context
+@app.route('/api/manus/context', methods=['GET'])
+def api_manus_context():
+    """Get Manus agent conversation context"""
+    try:
+        context = manus_agent.get_conversation_context()
+        return jsonify({
+            'success': True,
+            'context': context,
+            'context_length': len(context)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting conversation context: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Enhanced file upload with AI processing
+@app.route('/api/upload-file', methods=['POST'])
 def upload_file():
-    """Handle file upload"""
+    """Enhanced file upload with AI processing capabilities"""
     try:
         if 'file' not in request.files:
-            return jsonify({'error': 'No file part'}), 400
+            return jsonify({
+                'success': False,
+                'error': 'No file provided'
+            }), 400
         
         file = request.files['file']
         if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            # Add timestamp to avoid conflicts
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{timestamp}_{filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            # Get file info
-            file_size = os.path.getsize(filepath)
-            file_info = {
-                'filename': filename,
-                'original_name': file.filename,
-                'size': file_size,
-                'upload_time': datetime.now().isoformat(),
-                'path': filepath
-            }
-            
             return jsonify({
-                'success': True,
-                'file_info': file_info,
-                'message': f'File {file.filename} uploaded successfully'
-            })
-        else:
-            return jsonify({'error': 'File type not allowed'}), 400
-            
-    except Exception as e:
-        logger.error(f"File upload error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files')
-def get_uploaded_files():
-    """Get list of uploaded files"""
-    try:
-        files = []
-        if os.path.exists(app.config['UPLOAD_FOLDER']):
-            for filename in os.listdir(app.config['UPLOAD_FOLDER']):
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                if os.path.isfile(filepath):
-                    file_info = {
-                        'filename': filename,
-                        'size': os.path.getsize(filepath),
-                        'modified_time': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat()
-                    }
-                    files.append(file_info)
+                'success': False,
+                'error': 'No file selected'
+            }), 400
         
-        return jsonify({'files': files})
-    except Exception as e:
-        logger.error(f"Error getting files: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/chat-history')
-def get_chat_history():
-    """Get chat history"""
-    try:
-        history = load_chat_history()
-        return jsonify({'history': history})
-    except Exception as e:
-        logger.error(f"Error getting chat history: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/stop-task', methods=['POST'])
-def stop_task():
-    """Stop running AI task"""
-    try:
-        data = request.get_json()
-        task_id = data.get('task_id', 'default')
+        # Save uploaded file
+        filename = secure_filename(file.filename)
+        upload_path = os.path.join('workspace', 'uploads', filename)
+        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
         
-        if task_id in running_tasks:
-            # Signal the task to stop
-            running_tasks[task_id]['stop_flag'] = True
-            logger.info(f"Stop signal sent for task: {task_id}")
-            return jsonify({'success': True, 'message': 'Stop signal sent'})
-        else:
-            return jsonify({'success': False, 'message': 'No running task found'})
-            
-    except Exception as e:
-        logger.error(f"Error stopping task: {e}")
-        return jsonify({'error': str(e)}), 500
-
-async def main(prompt, task_id=None):
-    """Enhanced main function with advanced API key rotation and stop functionality"""
-    max_retries = len(api_key_manager.api_keys)
-    retry_count = 0
-    
-    while retry_count < max_retries:
-        # Get available API key
-        result = api_key_manager.get_available_api_key(use_random=True)
-        if not result:
-            logger.error("No API keys available for request")
-            
-            # Wait for next available key
-            max_wait_time = 10  # 5 minutes
-            wait_time = 5
-            start_time = time.time()
-            
-            while time.time() - start_time < max_wait_time:
-                logger.info(f"Waiting {wait_time}s for API key availability...")
-                await asyncio.sleep(wait_time)
-                
-                result = api_key_manager.get_available_api_key(use_random=True)
-                if result:
-                    break
-                    
-                wait_time = min(wait_time * 2, 60)  # Exponential backoff, max 60s
-            
-            if not result:
-                raise Exception("No API keys became available within timeout period")
+        file.save(upload_path)
         
-        api_key, key_config = result
-        key_name = key_config['name']
+        # Check if AI processing is requested
+        ai_process = request.form.get('ai_process', 'false').lower() == 'true'
         
-        try:
-            logger.info(f"Using API key: {key_name}")
-            
-            # Create Manus agent with advanced API key manager
-            agent = await Manus.create(
-                api_key_manager=api_key_manager,
-                api_key=api_key
+        result = {
+            'success': True,
+            'filename': filename,
+            'path': upload_path,
+            'size': os.path.getsize(upload_path)
+        }
+        
+        if ai_process:
+            # Use Manus agent to analyze the uploaded file
+            analysis_request = f"Analyze the uploaded file: {filename}"
+            analysis_result = manus_agent.execute(
+                request=analysis_request,
+                task_type='code_analysis',
+                target_path=upload_path
             )
             
-            # Execute the task
-            await agent.run(prompt)
-            
-            # Record successful request
-            api_key_manager.record_successful_request(api_key)
-            logger.info(f"Task completed successfully with key: {key_name}")
-            break
-            
-        except Exception as e:
-            error_str = str(e).lower()
-            
-            # Handle different types of errors
-            if any(keyword in error_str for keyword in ["rate limit", "quota", "too many requests"]):
-                logger.warning(f"Rate limit error with key {key_name}: {e}")
-                api_key_manager.record_rate_limit_error(api_key, key_name)
-            elif any(keyword in error_str for keyword in ["authentication", "invalid api key", "unauthorized"]):
-                logger.error(f"Authentication error with key {key_name}: {e}")
-                api_key_manager.record_failure(api_key, key_name, "auth_error")
-            elif any(keyword in error_str for keyword in ["timeout", "connection"]):
-                logger.warning(f"Connection error with key {key_name}: {e}")
-                api_key_manager.record_failure(api_key, key_name, "connection_error")
-            else:
-                logger.error(f"Unexpected error with key {key_name}: {e}")
-                api_key_manager.record_failure(api_key, key_name, "unknown_error")
-            
-            retry_count += 1
-            if retry_count >= max_retries:
-                logger.error("All API keys exhausted, task failed")
-                raise Exception(f"Task failed after trying all available API keys. Last error: {e}")
-            
-            logger.info(f"Retrying with different API key (attempt {retry_count + 1}/{max_retries})")
-            
-        finally:
-            if 'agent' in locals():
-                await agent.cleanup()
+            result['ai_analysis'] = analysis_result
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in file upload: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # Thread wrapper
 def run_async_task(message, task_id=None):

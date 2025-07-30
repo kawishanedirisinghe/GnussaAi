@@ -1887,6 +1887,530 @@
         function showExplainModal() {
             showNotification('Explain code functionality not fully implemented yet', 'info');
         }
+
+        // Enhanced AI Chat functionality with Manus agent
+        function sendAIMessage() {
+            const input = document.getElementById('ai-chat-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addAIChatMessage(message, 'user');
+            input.value = '';
+            
+            // Show typing indicator
+            const typingIndicator = addAIChatMessage('🤖 Manus is thinking...', 'assistant', true);
+            
+            // Send to Manus agent
+            fetch('/api/manus/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                typingIndicator.remove();
+                
+                if (data.success) {
+                    addAIChatMessage(data.message, 'assistant');
+                } else {
+                    addAIChatMessage(`❌ Error: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                typingIndicator.remove();
+                addAIChatMessage(`❌ Connection error: ${error.message}`, 'assistant error');
+            });
+        }
+
+        // Enhanced project generation with Manus agent
+        function generateCodeWithAI() {
+            const modal = document.getElementById('generate-code-modal');
+            const description = document.getElementById('code-description').value.trim();
+            const language = document.getElementById('code-language').value;
+            const projectName = document.getElementById('project-name').value.trim();
+            const includeTests = document.getElementById('include-tests').checked;
+            
+            if (!description) {
+                showNotification('Please provide a project description', 'error');
+                return;
+            }
+            
+            modal.style.display = 'none';
+            
+            // Show progress notification
+            const progressNotification = showNotification('🚀 Generating project with Manus Agent...', 'info', 0);
+            
+            fetch('/api/manus/generate-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    description: description,
+                    language: language,
+                    project_name: projectName || 'ai_generated_project',
+                    include_tests: includeTests,
+                    validate_code: true
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification('✅ Project generated successfully!', 'success');
+                    
+                    // Show detailed results
+                    addAIChatMessage(`🎉 **Project Generated Successfully!**
+
+**Project Details:**
+- Name: ${data.project_name}
+- Language: ${data.language}
+- Files Created: ${data.files_created ? data.files_created.length : 0}
+
+**Validation Results:**
+- Tests Generated: ${data.tests_generated ? '✅' : '❌'}
+- Validation Passed: ${data.validation_passed ? '✅' : '❌'}
+- Documentation: ${data.documentation_created ? '✅' : '❌'}
+
+**Next Steps:**
+${data.next_steps ? data.next_steps.map(step => `• ${step}`).join('\n') : 'Project is ready to use!'}
+
+Your project has been created and is ready to use! 🎯`, 'assistant');
+                    
+                    // Refresh file tree
+                    loadFileTree();
+                } else {
+                    showNotification(`❌ Generation failed: ${data.error}`, 'error');
+                    addAIChatMessage(`❌ **Project Generation Failed**\n\nError: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        // New function for code testing via Manus
+        function testCodeWithManus() {
+            const progressNotification = showNotification('🧪 Running tests with Manus Agent...', 'info', 0);
+            
+            fetch('/api/manus/test-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    request: 'Generate and run comprehensive tests for my code'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification('✅ Testing completed!', 'success');
+                    addAIChatMessage(data.message, 'assistant');
+                } else {
+                    showNotification(`❌ Testing failed: ${data.error}`, 'error');
+                    addAIChatMessage(`❌ **Testing Failed**\n\nError: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        // New function for bug fixing via Manus
+        function fixBugsWithManus() {
+            const progressNotification = showNotification('🐛 Fixing bugs with Manus Agent...', 'info', 0);
+            
+            fetch('/api/manus/fix-bugs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    request: 'Analyze and fix bugs in my code'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification('✅ Bug fixing completed!', 'success');
+                    addAIChatMessage(data.message, 'assistant');
+                    
+                    // Reload current file if it was modified
+                    if (currentFile) {
+                        loadFileContent(currentFile);
+                    }
+                } else {
+                    showNotification(`❌ Bug fixing failed: ${data.error}`, 'error');
+                    addAIChatMessage(`❌ **Bug Fixing Failed**\n\nError: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        // New function for code analysis via Manus
+        function analyzeCodeWithManus() {
+            const progressNotification = showNotification('📊 Analyzing code with Manus Agent...', 'info', 0);
+            
+            fetch('/api/manus/analyze-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    request: 'Perform comprehensive code analysis and review'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification('✅ Code analysis completed!', 'success');
+                    addAIChatMessage(data.message, 'assistant');
+                } else {
+                    showNotification(`❌ Code analysis failed: ${data.error}`, 'error');
+                    addAIChatMessage(`❌ **Code Analysis Failed**\n\nError: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        // Enhanced file upload with AI processing
+        function uploadFileWithAI() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.multiple = true;
+            fileInput.accept = '.py,.js,.ts,.html,.css,.json,.md,.txt,.csv,.xlsx,.pdf,.png,.jpg,.jpeg';
+            
+            fileInput.onchange = function(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                
+                for (let file of files) {
+                    uploadSingleFileWithAI(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function uploadSingleFileWithAI(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('ai_process', 'true'); // Enable AI processing
+            
+            const progressNotification = showNotification(`📤 Uploading ${file.name} with AI analysis...`, 'info', 0);
+            
+            fetch('/api/upload-file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification(`✅ ${file.name} uploaded successfully!`, 'success');
+                    
+                    // Show AI analysis if available
+                    if (data.ai_analysis && data.ai_analysis.success) {
+                        addAIChatMessage(`📁 **File Upload Complete: ${file.name}**\n\n${data.ai_analysis.message}`, 'assistant');
+                    } else {
+                        addAIChatMessage(`📁 **File Uploaded:** ${file.name}\n\nSize: ${(data.size / 1024).toFixed(2)} KB\nPath: ${data.path}`, 'assistant');
+                    }
+                    
+                    // Refresh file tree
+                    loadFileTree();
+                } else {
+                    showNotification(`❌ Upload failed: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Upload error: ${error.message}`, 'error');
+            });
+        }
+
+        // Enhanced Git operations via Manus
+        function gitCloneWithManus() {
+            const url = prompt('Enter Git repository URL:');
+            if (!url) return;
+            
+            const progressNotification = showNotification('🌐 Cloning repository with Manus Agent...', 'info', 0);
+            
+            fetch('/api/manus/git-operation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    request: `Clone repository from ${url}`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification('✅ Repository cloned successfully!', 'success');
+                    addAIChatMessage(data.message, 'assistant');
+                    loadFileTree();
+                } else {
+                    showNotification(`❌ Clone failed: ${data.error}`, 'error');
+                    addAIChatMessage(`❌ **Git Clone Failed**\n\nError: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        function gitCommitWithManus() {
+            const message = prompt('Enter commit message:', 'Update by Manus Agent');
+            if (!message) return;
+            
+            const progressNotification = showNotification('🌐 Committing changes with Manus Agent...', 'info', 0);
+            
+            fetch('/api/manus/git-operation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    request: `Commit changes with message "${message}"`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressNotification.remove();
+                
+                if (data.success) {
+                    showNotification('✅ Changes committed successfully!', 'success');
+                    addAIChatMessage(data.message, 'assistant');
+                } else {
+                    showNotification(`❌ Commit failed: ${data.error}`, 'error');
+                    addAIChatMessage(`❌ **Git Commit Failed**\n\nError: ${data.error}`, 'assistant error');
+                }
+            })
+            .catch(error => {
+                progressNotification.remove();
+                showNotification(`❌ Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        // Load Manus agent status on page load
+        function loadManusStatus() {
+            fetch('/api/manus/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI based on capabilities
+                    const capabilities = data.capabilities;
+                    
+                    // Show/hide features based on availability
+                    if (!capabilities.project_generation) {
+                        const generateBtn = document.querySelector('[onclick="showGenerateCodeModal()"]');
+                        if (generateBtn) {
+                            generateBtn.style.opacity = '0.5';
+                            generateBtn.title = 'AI code generation not available - no LLM client configured';
+                        }
+                    }
+                    
+                    // Add status indicator
+                    addAIChatMessage(`🤖 **Manus Agent Status**
+
+**Capabilities:**
+- Project Generation: ${capabilities.project_generation ? '✅' : '❌'}
+- Code Testing: ${capabilities.code_testing ? '✅' : '❌'}
+- Bug Fixing: ${capabilities.bug_fixing ? '✅' : '❌'}
+- Code Analysis: ${capabilities.code_analysis ? '✅' : '❌'}
+- File Management: ${capabilities.file_management ? '✅' : '❌'}
+- Git Operations: ${capabilities.git_operations ? '✅' : '❌'}
+
+**Supported Languages:** ${data.available_languages.join(', ')}
+**Supported Frameworks:** ${data.supported_frameworks.join(', ')}
+
+I'm ready to help you with your coding tasks! 🚀`, 'assistant');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading Manus status:', error);
+            });
+        }
+
+        // Add new buttons to the UI
+        function addManusButtons() {
+            // Add buttons to AI panel
+            const aiPanel = document.querySelector('.ai-panel .panel-content');
+            if (aiPanel) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'manus-buttons';
+                buttonContainer.innerHTML = `
+                    <button onclick="testCodeWithManus()" class="manus-btn test-btn">
+                        🧪 Test Code
+                    </button>
+                    <button onclick="fixBugsWithManus()" class="manus-btn fix-btn">
+                        🐛 Fix Bugs
+                    </button>
+                    <button onclick="analyzeCodeWithManus()" class="manus-btn analyze-btn">
+                        📊 Analyze Code
+                    </button>
+                    <button onclick="uploadFileWithAI()" class="manus-btn upload-btn">
+                        📤 Upload & Analyze
+                    </button>
+                `;
+                
+                aiPanel.insertBefore(buttonContainer, aiPanel.firstChild);
+            }
+            
+            // Add Git buttons
+            const gitPanel = document.querySelector('.git-panel .panel-content');
+            if (gitPanel) {
+                const gitButtonContainer = document.createElement('div');
+                gitButtonContainer.className = 'manus-git-buttons';
+                gitButtonContainer.innerHTML = `
+                    <button onclick="gitCloneWithManus()" class="manus-btn clone-btn">
+                        🌐 Smart Clone
+                    </button>
+                    <button onclick="gitCommitWithManus()" class="manus-btn commit-btn">
+                        💾 Smart Commit
+                    </button>
+                `;
+                
+                gitPanel.appendChild(gitButtonContainer);
+            }
+        }
+
+        // Enhanced initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing initialization code ...
+            
+            // Load Manus agent status
+            loadManusStatus();
+            
+            // Add Manus buttons
+            addManusButtons();
+            
+            // Enhanced AI chat input
+            const aiChatInput = document.getElementById('ai-chat-input');
+            if (aiChatInput) {
+                aiChatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendAIMessage();
+                    }
+                });
+            }
+        });
+
+        // Add CSS for new buttons
+        const manusStyles = `
+        <style>
+        .manus-buttons, .manus-git-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .manus-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .manus-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .manus-btn.test-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .manus-btn.fix-btn {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .manus-btn.analyze-btn {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+        }
+
+        .manus-btn.upload-btn {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #333;
+        }
+
+        .manus-btn.clone-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .manus-btn.commit-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .ai-chat-message.assistant {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .ai-chat-message.assistant.error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .ai-chat-message pre {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .ai-chat-message code {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        </style>
+        `;
+
+        // Inject styles
+        document.head.insertAdjacentHTML('beforeend', manusStyles);
     </script>
 </body>
 </html>
