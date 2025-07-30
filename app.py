@@ -16,9 +16,23 @@ import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import logging
+import json
+import uuid
+from werkzeug.utils import secure_filename
+import shutil
 
 app = Flask(__name__)
 app.config['WORKSPACE'] = 'workspace'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['CHAT_HISTORY_FILE'] = 'chat_history.json'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Create necessary directories
+os.makedirs(app.config['WORKSPACE'], exist_ok=True)
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Global variable to track running tasks
+running_tasks = {}
 
 # Load configuration
 config = toml.load('config/config.toml')
@@ -324,8 +338,136 @@ def api_keys_status():
     """API endpoint to get status of all API keys"""
     return jsonify(api_key_manager.get_keys_status())
 
-async def main(prompt):
-    """Enhanced main function with advanced API key rotation"""
+# File upload utilities
+def allowed_file(filename):
+    """Check if file type is allowed"""
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'csv', 'xlsx', 'py', 'js', 'html', 'css', 'json', 'xml', 'md'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_chat_history(chat_data):
+    """Save chat history to file"""
+    try:
+        if os.path.exists(app.config['CHAT_HISTORY_FILE']):
+            with open(app.config['CHAT_HISTORY_FILE'], 'r', encoding='utf-8') as f:
+                history = json.load(f)
+        else:
+            history = []
+        
+        history.append(chat_data)
+        
+        # Keep only last 100 conversations
+        if len(history) > 100:
+            history = history[-100:]
+        
+        with open(app.config['CHAT_HISTORY_FILE'], 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving chat history: {e}")
+
+def load_chat_history():
+    """Load chat history from file"""
+    try:
+        if os.path.exists(app.config['CHAT_HISTORY_FILE']):
+            with open(app.config['CHAT_HISTORY_FILE'], 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        logger.error(f"Error loading chat history: {e}")
+        return []
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """Handle file upload"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # Add timestamp to avoid conflicts
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_{filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            
+            # Get file info
+            file_size = os.path.getsize(filepath)
+            file_info = {
+                'filename': filename,
+                'original_name': file.filename,
+                'size': file_size,
+                'upload_time': datetime.now().isoformat(),
+                'path': filepath
+            }
+            
+            return jsonify({
+                'success': True,
+                'file_info': file_info,
+                'message': f'File {file.filename} uploaded successfully'
+            })
+        else:
+            return jsonify({'error': 'File type not allowed'}), 400
+            
+    except Exception as e:
+        logger.error(f"File upload error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files')
+def get_uploaded_files():
+    """Get list of uploaded files"""
+    try:
+        files = []
+        if os.path.exists(app.config['UPLOAD_FOLDER']):
+            for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if os.path.isfile(filepath):
+                    file_info = {
+                        'filename': filename,
+                        'size': os.path.getsize(filepath),
+                        'modified_time': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat()
+                    }
+                    files.append(file_info)
+        
+        return jsonify({'files': files})
+    except Exception as e:
+        logger.error(f"Error getting files: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat-history')
+def get_chat_history():
+    """Get chat history"""
+    try:
+        history = load_chat_history()
+        return jsonify({'history': history})
+    except Exception as e:
+        logger.error(f"Error getting chat history: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stop-task', methods=['POST'])
+def stop_task():
+    """Stop running AI task"""
+    try:
+        data = request.get_json()
+        task_id = data.get('task_id', 'default')
+        
+        if task_id in running_tasks:
+            # Signal the task to stop
+            running_tasks[task_id]['stop_flag'] = True
+            logger.info(f"Stop signal sent for task: {task_id}")
+            return jsonify({'success': True, 'message': 'Stop signal sent'})
+        else:
+            return jsonify({'success': False, 'message': 'No running task found'})
+            
+    except Exception as e:
+        logger.error(f"Error stopping task: {e}")
+        return jsonify({'error': str(e)}), 500
+
+async def main(prompt, task_id=None):
+    """Enhanced main function with advanced API key rotation and stop functionality"""
     max_retries = len(api_key_manager.api_keys)
     retry_count = 0
     
@@ -401,13 +543,13 @@ async def main(prompt):
             if 'agent' in locals():
                 await agent.cleanup()
 
-# 线程包装器
-def run_async_task(message):
-    """在新线程中运行异步任务"""
+# Thread wrapper
+def run_async_task(message, task_id=None):
+    """Run async task in new thread"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(main(message))
+        loop.run_until_complete(main(message, task_id))
     except Exception as e:
         logger.error(f"Task execution failed: {e}")
     finally:
@@ -415,31 +557,62 @@ def run_async_task(message):
 
 @app.route('/api/chat-stream', methods=['POST'])
 def chat_stream():
-    """流式日志接口"""
-    # 清空日志文件
+    """Enhanced streaming chat interface with stop functionality"""
+    # Clear log file
     if os.path.exists(LOG_FILE):
         os.remove(LOG_FILE)
 
-    # 获取请求数据
-    prompt = request.get_json()
-    logger.info(f"收到请求: {prompt}")
+    # Get request data
+    prompt_data = request.get_json()
+    message = prompt_data["message"]
+    task_id = prompt_data.get("task_id", str(uuid.uuid4()))
+    uploaded_files = prompt_data.get("uploaded_files", [])
+    
+    logger.info(f"Received request: {message}")
+    
+    # Process uploaded files if any
+    file_context = ""
+    if uploaded_files:
+        file_context = "\n\nUploaded files context:\n"
+        for file_info in uploaded_files:
+            try:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], file_info['filename'])
+                if os.path.exists(filepath):
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()[:2000]  # Limit content size
+                    file_context += f"\n--- {file_info['original_name']} ---\n{content}\n"
+            except Exception as e:
+                logger.error(f"Error reading file {file_info['filename']}: {e}")
+    
+    full_message = message + file_context
+    
+    # Initialize task tracking
+    running_tasks[task_id] = {
+        'stop_flag': False,
+        'start_time': time.time()
+    }
 
-    # 启动异步任务线程
+    # Start async task thread
     task_thread = threading.Thread(
         target=run_async_task,
-        args=(prompt["message"],)
+        args=(full_message, task_id)
     )
     task_thread.start()
 
-    # 流式生成器
+    # Streaming generator
     def generate():
         start_time = time.time()
+        full_response = ""
 
         while task_thread.is_alive() or not log_queue.empty():
-            # 超时检查
+            # Check for stop signal
+            if running_tasks.get(task_id, {}).get('stop_flag', False):
+                yield "Task stopped by user.\n"
+                break
+                
+            # Timeout check
             if time.time() - start_time > PROCESS_TIMEOUT:
                 yield """0303030"""
-  
                 break
             
             new_content = ""
@@ -449,20 +622,36 @@ def chat_stream():
                 pass
 
             if new_content:
+                full_response += new_content
                 yield new_content
 
-            # 无新内容时暂停
+            # Pause when no new content
             if not new_content:
                 time.sleep(FILE_CHECK_INTERVAL)
 
-        # 最终确认
+        # Save chat history
+        chat_data = {
+            'id': task_id,
+            'timestamp': datetime.now().isoformat(),
+            'user_message': message,
+            'agent_response': full_response,
+            'agent_type': 'manus',
+            'uploaded_files': uploaded_files
+        }
+        save_chat_history(chat_data)
+        
+        # Clean up task tracking
+        if task_id in running_tasks:
+            del running_tasks[task_id]
+
+        # Final confirmation
         yield """0303030"""
 
     return Response(generate(), mimetype="text/plain")
 
 # Run flow async task
-async def run_flow_task(prompt):
-    """Enhanced run_flow function with advanced API key rotation"""
+async def run_flow_task(prompt, task_id=None):
+    """Enhanced run_flow function with advanced API key rotation and stop functionality"""
     from app.agent.data_analysis import DataAnalysis
     from app.flow.flow_factory import FlowFactory, FlowType
     
@@ -568,12 +757,12 @@ async def run_flow_task(prompt):
                     if hasattr(agent, 'cleanup'):
                         await agent.cleanup()
 
-def run_flow_async_task(message):
-    """在新线程中运行flow异步任务"""
+def run_flow_async_task(message, task_id=None):
+    """Run flow async task in new thread"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(run_flow_task(message))
+        loop.run_until_complete(run_flow_task(message, task_id))
     except Exception as e:
         logger.error(f"Flow task execution failed: {e}")
     finally:
@@ -581,28 +770,60 @@ def run_flow_async_task(message):
 
 @app.route('/api/flow-stream', methods=['POST'])
 def flow_stream():
-    """Flow流式日志接口"""
-    # 清空日志文件
+    """Enhanced Flow streaming interface with stop functionality"""
+    # Clear log file
     if os.path.exists(LOG_FILE):
         os.remove(LOG_FILE)
 
-    # 获取请求数据
-    prompt = request.get_json()
-    logger.info(f"收到Flow请求: {prompt}")
+    # Get request data
+    prompt_data = request.get_json()
+    message = prompt_data["message"]
+    task_id = prompt_data.get("task_id", str(uuid.uuid4()))
+    uploaded_files = prompt_data.get("uploaded_files", [])
+    
+    logger.info(f"Received Flow request: {message}")
+    
+    # Process uploaded files if any
+    file_context = ""
+    if uploaded_files:
+        file_context = "\n\nUploaded files context:\n"
+        for file_info in uploaded_files:
+            try:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], file_info['filename'])
+                if os.path.exists(filepath):
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()[:2000]  # Limit content size
+                    file_context += f"\n--- {file_info['original_name']} ---\n{content}\n"
+            except Exception as e:
+                logger.error(f"Error reading file {file_info['filename']}: {e}")
+    
+    full_message = message + file_context
+    
+    # Initialize task tracking
+    running_tasks[task_id] = {
+        'stop_flag': False,
+        'start_time': time.time()
+    }
 
-    # 启动异步任务线程
+    # Start async task thread
     task_thread = threading.Thread(
         target=run_flow_async_task,
-        args=(prompt["message"],)
+        args=(full_message, task_id)
     )
     task_thread.start()
 
-    # 流式生成器
+    # Streaming generator
     def generate():
         start_time = time.time()
+        full_response = ""
 
         while task_thread.is_alive() or not log_queue.empty():
-            # 超时检查
+            # Check for stop signal
+            if running_tasks.get(task_id, {}).get('stop_flag', False):
+                yield "Task stopped by user.\n"
+                break
+                
+            # Timeout check
             if time.time() - start_time > PROCESS_TIMEOUT:
                 yield """0303030"""
                 break
@@ -614,13 +835,29 @@ def flow_stream():
                 pass
 
             if new_content:
+                full_response += new_content
                 yield new_content
 
-            # 无新内容时暂停
+            # Pause when no new content
             if not new_content:
                 time.sleep(FILE_CHECK_INTERVAL)
 
-        # 最终确认
+        # Save chat history
+        chat_data = {
+            'id': task_id,
+            'timestamp': datetime.now().isoformat(),
+            'user_message': message,
+            'agent_response': full_response,
+            'agent_type': 'flow',
+            'uploaded_files': uploaded_files
+        }
+        save_chat_history(chat_data)
+        
+        # Clean up task tracking
+        if task_id in running_tasks:
+            del running_tasks[task_id]
+
+        # Final confirmation
         yield """0303030"""
 
     return Response(generate(), mimetype="text/plain")
